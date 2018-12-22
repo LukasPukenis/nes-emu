@@ -24,7 +24,7 @@ module.exports = {
   mode: 'development',
   context: __dirname,
   entry: {
-    'hacksimgames': './src/main.ts',
+    'nes': './src/nes.ts',
   },
   output: {
     path: path.join(__dirname, 'dist/js/'),
