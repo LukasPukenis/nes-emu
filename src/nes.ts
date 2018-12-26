@@ -14,7 +14,7 @@ class NES {
             } else {
                 console.log('Rom is good to go');
                 this.cpu = new CPU(this.rom);       
-                this.run();         
+                this.run();
             }
         });
         

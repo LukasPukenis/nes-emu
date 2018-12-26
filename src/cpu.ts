@@ -341,11 +341,11 @@ const opcodes: Opcode[] = [
  */
 const AddressDecoders: any = {
     [AddressingModes.modeAbsolute]: (opcode: Opcode, cpu: CPU) => { return cpu.memory.read16(cpu.PC + 1); },
-    [AddressingModes.modeAbsoluteX]: (opcode: Opcode, cpu: CPU) => { return 1; },
-    [AddressingModes.modeAbsoluteY]: (opcode: Opcode, cpu: CPU) => { return 1; },
-    [AddressingModes.modeAccumulator]: (opcode: Opcode, cpu: CPU) => { return 1; },
-    [AddressingModes.modeImmediate]: (opcode: Opcode, cpu: CPU) => { return 1; },
-    [AddressingModes.modeImplied]: (opcode: Opcode, cpu: CPU) => { return 1; },
+    [AddressingModes.modeAbsoluteX]: (opcode: Opcode, cpu: CPU) => { return cpu.memory.read16(cpu.PC+1) + cpu.memory.read16(cpu.X); },
+    [AddressingModes.modeAbsoluteY]: (opcode: Opcode, cpu: CPU) => { return cpu.memory.read16(cpu.PC+1) + cpu.memory.read16(cpu.Y); },
+    [AddressingModes.modeAccumulator]: (opcode: Opcode, cpu: CPU) => { return 0; },
+    [AddressingModes.modeImmediate]: (opcode: Opcode, cpu: CPU) => { return cpu.PC + 1; },
+    [AddressingModes.modeImplied]: (opcode: Opcode, cpu: CPU) => { return 0; },
     [AddressingModes.modeIndexedIndirect]: (opcode: Opcode, cpu: CPU) => { return 1; },
     [AddressingModes.modeIndirect]: (opcode: Opcode, cpu: CPU) => { return 1; },
     [AddressingModes.modeIndirectIndexed]: (opcode: Opcode, cpu: CPU) => { return 1; },
@@ -357,14 +357,14 @@ const AddressDecoders: any = {
 
 export class CPU {
     memory: Memory;
-    private A:  Register;
-    private X:  Register;
-    private Y:  Register;
+    A:  Register;
+    X:  Register;
+    Y:  Register;
     PC: Register;
-    private S:  Register;
-    private P:  Register;
-    private cycles: number;
-    private rom: ROM;
+    S:  Register;
+    P:  Register;
+    cycles: number;
+    rom: ROM;
 
     constructor(rom: ROM) {
         this.A = 0;
@@ -506,7 +506,8 @@ export class CPU {
     }
     
     JMP(data: OpData): void {
-    console.log("JUMP JUMP", data.toString(16)); 
+    	console.log("JUMP JUMP", data.toString(16)); 
+		this.PC = data;
     }
     
     BVC(data: OpData): void {

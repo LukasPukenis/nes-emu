@@ -2,7 +2,6 @@ export function printhex(data: any, len: number = 10, offset: number = 0) {
     let out = '';
     for (let i = offset; i < len+offset; i++) {
         let num = data[i];
-        // num >>> 0;
         out += (num >>> 0 & 0xFF).toString(16) + " ";
     }
 
