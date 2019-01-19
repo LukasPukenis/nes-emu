@@ -14,7 +14,7 @@ module.exports = {
   ],
 
   "setupFiles": [
-    
+    "<rootDir>/tests/setup.js"
   ],
   "verbose": false,
   "moduleFileExtensions": [

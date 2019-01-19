@@ -9,16 +9,29 @@ export function printhex(data: any, len: number = 10, offset: number = 0) {
 }
 
 export class ROM {
-    private filename: string;
+    private path: string;
     private data: Int8Array;
     private prgroms: any[] = [];
 
-    constructor(filename: string) {
-        this.filename = filename;
+    constructor() {        
+    }
+
+    async load(path: string) {
+        this.path = path;
+
+        return new Promise( async (resolve, reject) => {
+            try {
+                await this.parse();
+                resolve();
+            } catch(e) {
+                reject(e);
+            }
+        });
     }
 
     async parse() {
-        let data = await fetch(this.filename);
+        let data = await fetch(this.path);
+        console.log(this.path);
         let parsedData = await data.arrayBuffer();
         this.data = new Int8Array(parsedData);
 
@@ -26,9 +39,7 @@ export class ROM {
             return false;        
 
         let prgRomCnt = this.data[5];
-        console.log('there are', prgRomCnt, 'PRGROMS');
-        console.log('==', this.data.length);
-
+        
         for (let i = 0; i < prgRomCnt; i++)            
             this.prgroms.push(this.data.slice(16 + i*0x4000, (i+1)*0x4000+16));
 
