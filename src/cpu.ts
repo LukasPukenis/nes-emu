@@ -37,43 +37,41 @@ type OpData = number;
 
 type Opcode = {
     name: string,
-    cycles: number;
+	cycles: number;	
     page_cost: number;
     size: number;
     addr_mode: AddressingModes;
-	op: (cpu: CPU, data: OpData) => void;
-	displayMemoryContent?: boolean;
-	displayIndexedIndirectMemoryContent?: boolean;
-	displayZeroPageMemory?: true;
+	op: (cpu: CPU, data: OpData) => void;	
 	noData?: boolean;
+	showMemValue?: boolean;
 };
 
-
+// todo: showMemValue is almost redundant, only JMP absolute doesnt show value so it would make more sense to just add an oposite flag
 const opcodes: Opcode[] = [
 	{ name: "BRK", cycles: 7, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.BRK(data);} },
-	{ name: "ORA", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.ORA(data);}, displayIndexedIndirectMemoryContent: true },
+	{ name: "ORA", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.ORA(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
-	{ name: "*SLO", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.SLO(data);}, displayIndexedIndirectMemoryContent: true },
+	{ name: "*SLO", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.SLO(data);} },
 	{ name: "*NOP", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "ORA", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ORA(data);}, displayMemoryContent: true },
-	{ name: "ASL", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ASL(data);}, displayMemoryContent: true },
-	{ name: "*SLO", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.SLO(data);} },
+	{ name: "ORA", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ORA(data);}, showMemValue: true },
+	{ name: "ASL", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ASL(data);}, showMemValue: true },
+	{ name: "*SLO", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.SLO(data);}, showMemValue: true },
 	{ name: "PHP", cycles: 3, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.PHP(data);}, noData: true },
 	{ name: "ORA", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.ORA(data);} },
 	{ name: "ASL A", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeAccumulator, op:(cpu: CPU, data: OpData) => { cpu.ASLA(data);}, noData: true },
 	{ name: "ANC", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.ANC(data);} },
 	{ name: "*NOP", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "ORA", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ORA(data);}, displayMemoryContent: true },
-	{ name: "ASL", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ASL(data);}, displayMemoryContent: true },
-	{ name: "*SLO", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.SLO(data);}, displayMemoryContent: true },
+	{ name: "ORA", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ORA(data);}, showMemValue: true },
+	{ name: "ASL", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ASL(data);}, showMemValue: true },
+	{ name: "*SLO", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.SLO(data);}, showMemValue: true },
 	{ name: "BPL", cycles: 2, page_cost: 1, size: 2, addr_mode: AddressingModes.modeRelative, op:(cpu: CPU, data: OpData) => { cpu.BPL(data);} },
 	{ name: "ORA", cycles: 5, page_cost: 1, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.ORA(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
 	{ name: "*SLO", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.SLO(data);} },
 	{ name: "*NOP", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "ORA", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ORA(data);}, displayZeroPageMemory: true },
-	{ name: "ASL", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ASL(data);}, displayZeroPageMemory: true },
-	{ name: "*SLO", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.SLO(data);}, displayZeroPageMemory: true },
+	{ name: "ORA", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ORA(data);} },
+	{ name: "ASL", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ASL(data);} },
+	{ name: "*SLO", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.SLO(data);} },
 	{ name: "CLC", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.CLC(data);}, noData: true },
 	{ name: "ORA", cycles: 4, page_cost: 1, size: 3, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.ORA(data);} },
 	{ name: "*NOP", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
@@ -83,29 +81,29 @@ const opcodes: Opcode[] = [
 	{ name: "ASL", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.ASL(data);} },
 	{ name: "*SLO", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.SLO(data);} },
 	{ name: "JSR", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.JSR(data);} },
-	{ name: "AND", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.AND(data);}, displayIndexedIndirectMemoryContent: true },
+	{ name: "AND", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.AND(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
-	{ name: "*RLA", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.RLA(data);}, displayIndexedIndirectMemoryContent: true },
-	{ name: "BIT", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.BIT(data);}, displayMemoryContent: true },
-	{ name: "AND", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.AND(data);}, displayMemoryContent: true },
-	{ name: "ROL", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ROL(data);}, displayMemoryContent: true },
-	{ name: "*RLA", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.RLA(data);} },
+	{ name: "*RLA", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.RLA(data);} },
+	{ name: "BIT", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.BIT(data);}, showMemValue: true },
+	{ name: "AND", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.AND(data);}, showMemValue: true },
+	{ name: "ROL", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ROL(data);}, showMemValue: true },
+	{ name: "*RLA", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.RLA(data);}, showMemValue: true },
 	{ name: "PLP", cycles: 4, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.PLP(data);}, noData: true },
 	{ name: "AND", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.AND(data);} },
 	{ name: "ROL A", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeAccumulator, op:(cpu: CPU, data: OpData) => { cpu.ROLA(data);}, noData: true},
 	{ name: "ANC", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.ANC(data);} },
-	{ name: "BIT", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.BIT(data);}, displayMemoryContent: true },
-	{ name: "AND", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.AND(data);}, displayMemoryContent: true },
-	{ name: "ROL", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ROL(data);}, displayMemoryContent: true },
-	{ name: "*RLA", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.RLA(data);}, displayMemoryContent: true },
+	{ name: "BIT", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.BIT(data);}, showMemValue: true },
+	{ name: "AND", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.AND(data);}, showMemValue: true },
+	{ name: "ROL", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ROL(data);}, showMemValue: true },
+	{ name: "*RLA", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.RLA(data);}, showMemValue: true },
 	{ name: "BMI", cycles: 2, page_cost: 1, size: 2, addr_mode: AddressingModes.modeRelative, op:(cpu: CPU, data: OpData) => { cpu.BMI(data);} },
 	{ name: "AND", cycles: 5, page_cost: 1, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.AND(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
 	{ name: "*RLA", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.RLA(data);} },
 	{ name: "*NOP", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "AND", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.AND(data);}, displayZeroPageMemory: true },
-	{ name: "ROL", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ROL(data);}, displayZeroPageMemory: true },
-	{ name: "*RLA", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.RLA(data);}, displayZeroPageMemory: true },
+	{ name: "AND", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.AND(data);} },
+	{ name: "ROL", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ROL(data);} },
+	{ name: "*RLA", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.RLA(data);} },
 	{ name: "SEC", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.SEC(data);}, noData: true },
 	{ name: "AND", cycles: 4, page_cost: 1, size: 3, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.AND(data);} },
 	{ name: "*NOP", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
@@ -115,29 +113,29 @@ const opcodes: Opcode[] = [
 	{ name: "ROL", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.ROL(data);} },
 	{ name: "*RLA", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.RLA(data);} },
 	{ name: "RTI", cycles: 6, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.RTI(data);}, noData: true },
-	{ name: "EOR", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.EOR(data);}, displayIndexedIndirectMemoryContent: true },
+	{ name: "EOR", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.EOR(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
-	{ name: "*SRE", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.SRE(data);}, displayIndexedIndirectMemoryContent: true },
+	{ name: "*SRE", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.SRE(data);} },
 	{ name: "*NOP", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "EOR", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.EOR(data);}, displayMemoryContent: true },
-	{ name: "LSR", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.LSR(data);}, displayMemoryContent: true },
-	{ name: "*SRE", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.SRE(data);} },
+	{ name: "EOR", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.EOR(data);}, showMemValue: true },
+	{ name: "LSR", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.LSR(data);}, showMemValue: true },
+	{ name: "*SRE", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.SRE(data);}, showMemValue: true },
 	{ name: "PHA", cycles: 3, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.PHA(data);}, noData: true },
 	{ name: "EOR", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.EOR(data);} },
 	{ name: "LSR A", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeAccumulator, op:(cpu: CPU, data: OpData) => { cpu.LSRA(data);}, noData: true },
 	{ name: "ALR", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.ALR(data);} },
 	{ name: "JMP", cycles: 3, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.JMP(data);} },
-	{ name: "EOR", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.EOR(data);}, displayMemoryContent: true },
-	{ name: "LSR", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.LSR(data);}, displayMemoryContent: true },
-	{ name: "*SRE", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.SRE(data);}, displayMemoryContent: true },
+	{ name: "EOR", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.EOR(data);}, showMemValue: true },
+	{ name: "LSR", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.LSR(data);}, showMemValue: true },
+	{ name: "*SRE", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.SRE(data);}, showMemValue: true },
 	{ name: "BVC", cycles: 2, page_cost: 1, size: 2, addr_mode: AddressingModes.modeRelative, op:(cpu: CPU, data: OpData) => { cpu.BVC(data);} },
 	{ name: "EOR", cycles: 5, page_cost: 1, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.EOR(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
 	{ name: "*SRE", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.SRE(data);} },
 	{ name: "*NOP", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "EOR", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.EOR(data);}, displayZeroPageMemory: true },
-	{ name: "LSR", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.LSR(data);}, displayZeroPageMemory: true },
-	{ name: "*SRE", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.SRE(data);}, displayZeroPageMemory: true },
+	{ name: "EOR", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.EOR(data);} },
+	{ name: "LSR", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.LSR(data);} },
+	{ name: "*SRE", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.SRE(data);} },
 	{ name: "CLI", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.CLI(data);}, noData: true },
 	{ name: "EOR", cycles: 4, page_cost: 1, size: 3, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.EOR(data);} },
 	{ name: "*NOP", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
@@ -147,29 +145,29 @@ const opcodes: Opcode[] = [
 	{ name: "LSR", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.LSR(data);} },
 	{ name: "*SRE", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.SRE(data);} },
 	{ name: "RTS", cycles: 6, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.RTS(data);}, noData: true },
-	{ name: "ADC", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.ADC(data);}, displayIndexedIndirectMemoryContent: true },
+	{ name: "ADC", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.ADC(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
-	{ name: "*RRA", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.RRA(data);}, displayIndexedIndirectMemoryContent: true },
+	{ name: "*RRA", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.RRA(data);} },
 	{ name: "*NOP", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "ADC", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ADC(data);}, displayMemoryContent: true },
-	{ name: "ROR", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ROR(data);}, displayMemoryContent: true },
-	{ name: "*RRA", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.RRA(data);} },
+	{ name: "ADC", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ADC(data);}, showMemValue: true },
+	{ name: "ROR", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ROR(data);}, showMemValue: true },
+	{ name: "*RRA", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.RRA(data);}, showMemValue: true },
 	{ name: "PLA", cycles: 4, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.PLA(data);}, noData: true },
 	{ name: "ADC", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.ADC(data);} },
 	{ name: "ROR A", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeAccumulator, op:(cpu: CPU, data: OpData) => { cpu.RORA(data);}, noData: true },
 	{ name: "ARR", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.ARR(data);} },
-	{ name: "JMP", cycles: 5, page_cost: 0, size: 3, addr_mode: AddressingModes.modeIndirect, op:(cpu: CPU, data: OpData) => { cpu.JMP(data);} },
-	{ name: "ADC", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ADC(data);}, displayMemoryContent: true },
-	{ name: "ROR", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ROR(data);}, displayMemoryContent: true },
-	{ name: "*RRA", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.RRA(data);}, displayMemoryContent: true },
+	{ name: "JMP", cycles: 5, page_cost: 0, size: 3, addr_mode: AddressingModes.modeIndirect, op:(cpu: CPU, data: OpData) => { cpu.JMP(data);},  },
+	{ name: "ADC", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ADC(data);}, showMemValue: true },
+	{ name: "ROR", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ROR(data);}, showMemValue: true },
+	{ name: "*RRA", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.RRA(data);}, showMemValue: true },
 	{ name: "BVS", cycles: 2, page_cost: 1, size: 2, addr_mode: AddressingModes.modeRelative, op:(cpu: CPU, data: OpData) => { cpu.BVS(data);} },
 	{ name: "ADC", cycles: 5, page_cost: 1, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.ADC(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
 	{ name: "*RRA", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.RRA(data);} },
 	{ name: "*NOP", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "ADC", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ADC(data);}, displayZeroPageMemory: true },
-	{ name: "ROR", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ROR(data);}, displayZeroPageMemory: true },
-	{ name: "*RRA", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.RRA(data);}, displayZeroPageMemory: true },
+	{ name: "ADC", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ADC(data);} },
+	{ name: "ROR", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ROR(data);} },
+	{ name: "*RRA", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.RRA(data);} },
 	{ name: "SEI", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.SEI(data);}, noData: true },
 	{ name: "ADC", cycles: 4, page_cost: 1, size: 3, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.ADC(data);} },
 	{ name: "*NOP", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
@@ -179,29 +177,29 @@ const opcodes: Opcode[] = [
 	{ name: "ROR", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.ROR(data);} },
 	{ name: "*RRA", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.RRA(data);} },
 	{ name: "*NOP", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "STA", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.STA(data);}, displayIndexedIndirectMemoryContent: true },
+	{ name: "STA", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.STA(data);} },
 	{ name: "*NOP", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "*SAX", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.SAX(data);}, displayIndexedIndirectMemoryContent: true },
-	{ name: "STY", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.STY(data);}, displayMemoryContent: true },
-	{ name: "STA", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.STA(data);}, displayMemoryContent: true },
-	{ name: "STX", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.STX(data);}, displayMemoryContent: true },
-	{ name: "*SAX", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.SAX(data);} },
+	{ name: "*SAX", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.SAX(data);} },
+	{ name: "STY", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.STY(data);}, showMemValue: true },
+	{ name: "STA", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.STA(data);}, showMemValue: true },
+	{ name: "STX", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.STX(data);}, showMemValue: true },
+	{ name: "*SAX", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.SAX(data);}, showMemValue: true },
 	{ name: "DEY", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.DEY(data);}, noData: true },
 	{ name: "*NOP", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
 	{ name: "TXA", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.TXA(data);}, noData: true },
 	{ name: "XAA", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.XAA(data);} },
-	{ name: "STY", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.STY(data);}, displayMemoryContent: true },
-	{ name: "STA", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.STA(data);}, displayMemoryContent: true },
-	{ name: "STX", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.STX(data);}, displayMemoryContent: true },
-	{ name: "*SAX", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.SAX(data);}, displayMemoryContent: true },
+	{ name: "STY", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.STY(data);}, showMemValue: true },
+	{ name: "STA", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.STA(data);}, showMemValue: true },
+	{ name: "STX", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.STX(data);}, showMemValue: true },
+	{ name: "*SAX", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.SAX(data);}, showMemValue: true },
 	{ name: "BCC", cycles: 2, page_cost: 1, size: 2, addr_mode: AddressingModes.modeRelative, op:(cpu: CPU, data: OpData) => { cpu.BCC(data);} },
 	{ name: "STA", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.STA(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
 	{ name: "AHX", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.AHX(data);} },
-	{ name: "STY", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.STY(data);}, displayZeroPageMemory: true },
-	{ name: "STA", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.STA(data);}, displayZeroPageMemory: true },
-	{ name: "STX", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageY, op:(cpu: CPU, data: OpData) => { cpu.STX(data);}, displayZeroPageMemory: true },
-	{ name: "*SAX", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageY, op:(cpu: CPU, data: OpData) => { cpu.SAX(data);}, displayZeroPageMemory: true },
+	{ name: "STY", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.STY(data);} },
+	{ name: "STA", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.STA(data);} },
+	{ name: "STX", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageY, op:(cpu: CPU, data: OpData) => { cpu.STX(data);} },
+	{ name: "*SAX", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageY, op:(cpu: CPU, data: OpData) => { cpu.SAX(data);} },
 	{ name: "TYA", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.TYA(data);}, noData: true },
 	{ name: "STA", cycles: 5, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.STA(data);} },
 	{ name: "TXS", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.TXS(data);}, noData: true },
@@ -211,29 +209,29 @@ const opcodes: Opcode[] = [
 	{ name: "SHX", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.SHX(data);} },
 	{ name: "AHX", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.AHX(data);} },
 	{ name: "LDY", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.LDY(data);} },
-	{ name: "LDA", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.LDA(data);}, displayIndexedIndirectMemoryContent: true },
+	{ name: "LDA", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.LDA(data);} },
 	{ name: "LDX", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.LDX(data);} },
-	{ name: "*LAX", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.LAX(data);}, displayIndexedIndirectMemoryContent: true },
-	{ name: "LDY", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.LDY(data);}, displayMemoryContent: true },
-	{ name: "LDA", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.LDA(data);}, displayMemoryContent: true },
-	{ name: "LDX", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.LDX(data);}, displayMemoryContent: true },
-	{ name: "*LAX", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.LAX(data);} },
+	{ name: "*LAX", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.LAX(data);} },
+	{ name: "LDY", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.LDY(data);}, showMemValue: true },
+	{ name: "LDA", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.LDA(data);}, showMemValue: true },
+	{ name: "LDX", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.LDX(data);}, showMemValue: true },
+	{ name: "*LAX", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.LAX(data);},showMemValue: true },
 	{ name: "TAY", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.TAY(data);}, noData: true },
 	{ name: "LDA", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.LDA(data);} },
 	{ name: "TAX", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.TAX(data);}, noData: true },
 	{ name: "*LAX", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.LAX(data);} },
-	{ name: "LDY", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.LDY(data);}, displayMemoryContent: true },
-	{ name: "LDA", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.LDA(data);}, displayMemoryContent: true },
-	{ name: "LDX", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.LDX(data);}, displayMemoryContent: true },
-	{ name: "*LAX", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.LAX(data);}, displayMemoryContent: true },
+	{ name: "LDY", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.LDY(data);}, showMemValue: true },
+	{ name: "LDA", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.LDA(data);}, showMemValue: true },
+	{ name: "LDX", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.LDX(data);}, showMemValue: true },
+	{ name: "*LAX", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.LAX(data);}, showMemValue: true },
 	{ name: "BCS", cycles: 2, page_cost: 1, size: 2, addr_mode: AddressingModes.modeRelative, op:(cpu: CPU, data: OpData) => { cpu.BCS(data);} },
 	{ name: "LDA", cycles: 5, page_cost: 1, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.LDA(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
 	{ name: "*LAX", cycles: 5, page_cost: 1, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.LAX(data);} },
-	{ name: "LDY", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.LDY(data);}, displayZeroPageMemory: true },
-	{ name: "LDA", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.LDA(data);}, displayZeroPageMemory: true },
-	{ name: "LDX", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageY, op:(cpu: CPU, data: OpData) => { cpu.LDX(data);}, displayZeroPageMemory: true },
-	{ name: "*LAX", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageY, op:(cpu: CPU, data: OpData) => { cpu.LAX(data);}, displayZeroPageMemory: true },
+	{ name: "LDY", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.LDY(data);} },
+	{ name: "LDA", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.LDA(data);} },
+	{ name: "LDX", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageY, op:(cpu: CPU, data: OpData) => { cpu.LDX(data);} },
+	{ name: "*LAX", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageY, op:(cpu: CPU, data: OpData) => { cpu.LAX(data);} },
 	{ name: "CLV", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.CLV(data);}, noData: true },
 	{ name: "LDA", cycles: 4, page_cost: 1, size: 3, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.LDA(data);} },
 	{ name: "TSX", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.TSX(data);}, noData: true },
@@ -243,29 +241,29 @@ const opcodes: Opcode[] = [
 	{ name: "LDX", cycles: 4, page_cost: 1, size: 3, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.LDX(data);} },
 	{ name: "*LAX", cycles: 4, page_cost: 1, size: 3, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.LAX(data);} },
 	{ name: "CPY", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.CPY(data);} },
-	{ name: "CMP", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.CMP(data);}, displayIndexedIndirectMemoryContent: true },
+	{ name: "CMP", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.CMP(data);} },
 	{ name: "*NOP", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "*DCP", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.DCP(data);}, displayIndexedIndirectMemoryContent: true },
-	{ name: "CPY", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.CPY(data);}, displayMemoryContent: true },
-	{ name: "CMP", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.CMP(data);}, displayMemoryContent: true },
-	{ name: "DEC", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.DEC(data);}, displayMemoryContent: true },
-	{ name: "*DCP", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.DCP(data);} },
+	{ name: "*DCP", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.DCP(data);} },
+	{ name: "CPY", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.CPY(data);}, showMemValue: true },
+	{ name: "CMP", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.CMP(data);}, showMemValue: true },
+	{ name: "DEC", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.DEC(data);}, showMemValue: true },
+	{ name: "*DCP", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.DCP(data);}, showMemValue: true },
 	{ name: "INY", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.INY(data);}, noData: true },
 	{ name: "CMP", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.CMP(data);} },
 	{ name: "DEX", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.DEX(data);}, noData: true },
 	{ name: "AXS", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.AXS(data);} },
-	{ name: "CPY", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.CPY(data);}, displayMemoryContent: true },
-	{ name: "CMP", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.CMP(data);}, displayMemoryContent: true },
-	{ name: "DEC", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.DEC(data);}, displayMemoryContent: true },
-	{ name: "*DCP", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.DCP(data);}, displayMemoryContent: true },
+	{ name: "CPY", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.CPY(data);}, showMemValue: true },
+	{ name: "CMP", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.CMP(data);}, showMemValue: true },
+	{ name: "DEC", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.DEC(data);}, showMemValue: true },
+	{ name: "*DCP", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.DCP(data);}, showMemValue: true },
 	{ name: "BNE", cycles: 2, page_cost: 1, size: 2, addr_mode: AddressingModes.modeRelative, op:(cpu: CPU, data: OpData) => { cpu.BNE(data);} },
 	{ name: "CMP", cycles: 5, page_cost: 1, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.CMP(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
 	{ name: "*DCP", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.DCP(data);} },
 	{ name: "*NOP", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "CMP", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.CMP(data);}, displayZeroPageMemory: true },
-	{ name: "DEC", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.DEC(data);}, displayZeroPageMemory: true },
-	{ name: "*DCP", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.DCP(data);}, displayZeroPageMemory: true },
+	{ name: "CMP", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.CMP(data);} },
+	{ name: "DEC", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.DEC(data);} },
+	{ name: "*DCP", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.DCP(data);} },
 	{ name: "CLD", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.CLD(data);}, noData: true },
 	{ name: "CMP", cycles: 4, page_cost: 1, size: 3, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.CMP(data);} },
 	{ name: "*NOP", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
@@ -275,29 +273,29 @@ const opcodes: Opcode[] = [
 	{ name: "DEC", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.DEC(data);} },
 	{ name: "*DCP", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.DCP(data);} },
 	{ name: "CPX", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.CPX(data);} },
-	{ name: "SBC", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);}, displayIndexedIndirectMemoryContent: true },
+	{ name: "SBC", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);} },
 	{ name: "*NOP", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "*ISB", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.ISB(data);}, displayIndexedIndirectMemoryContent: true },
-	{ name: "CPX", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.CPX(data);}, displayMemoryContent: true },
-	{ name: "SBC", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);}, displayMemoryContent: true },
-	{ name: "INC", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.INC(data);}, displayMemoryContent: true },
-	{ name: "*ISB", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ISB(data);} },
+	{ name: "*ISB", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndexedIndirect, op:(cpu: CPU, data: OpData) => { cpu.ISB(data);} },
+	{ name: "CPX", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.CPX(data);}, showMemValue: true },
+	{ name: "SBC", cycles: 3, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);}, showMemValue: true },
+	{ name: "INC", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.INC(data);}, showMemValue: true },
+	{ name: "*ISB", cycles: 5, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPage, op:(cpu: CPU, data: OpData) => { cpu.ISB(data);}, showMemValue: true },
 	{ name: "INX", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.INX(data);}, noData: true },
 	{ name: "SBC", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);} },
 	{ name: "NOP", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
 	{ name: "*SBC", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImmediate, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);} },
-	{ name: "CPX", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.CPX(data);}, displayMemoryContent: true },
-	{ name: "SBC", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);}, displayMemoryContent: true },
-	{ name: "INC", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.INC(data);}, displayMemoryContent: true },
-	{ name: "*ISB", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ISB(data);}, displayMemoryContent: true },
+	{ name: "CPX", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.CPX(data);}, showMemValue: true },
+	{ name: "SBC", cycles: 4, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);}, showMemValue: true },
+	{ name: "INC", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.INC(data);}, showMemValue: true },
+	{ name: "*ISB", cycles: 6, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsolute, op:(cpu: CPU, data: OpData) => { cpu.ISB(data);}, showMemValue: true },
 	{ name: "BEQ", cycles: 2, page_cost: 1, size: 2, addr_mode: AddressingModes.modeRelative, op:(cpu: CPU, data: OpData) => { cpu.BEQ(data);} },
 	{ name: "SBC", cycles: 5, page_cost: 1, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);} },
 	{ name: "KIL", cycles: 2, page_cost: 0, size: 2, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.KIL(data);} },
 	{ name: "*ISB", cycles: 8, page_cost: 0, size: 2, addr_mode: AddressingModes.modeIndirectIndexed, op:(cpu: CPU, data: OpData) => { cpu.ISB(data);} },
 	{ name: "*NOP", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
-	{ name: "SBC", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);}, displayZeroPageMemory: true },
-	{ name: "INC", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.INC(data);}, displayZeroPageMemory: true },
-	{ name: "*ISB", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ISB(data);}, displayZeroPageMemory: true },
+	{ name: "SBC", cycles: 4, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);} },
+	{ name: "INC", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.INC(data);} },
+	{ name: "*ISB", cycles: 6, page_cost: 0, size: 2, addr_mode: AddressingModes.modeZeroPageX, op:(cpu: CPU, data: OpData) => { cpu.ISB(data);} },
 	{ name: "SED", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.SED(data);}, noData: true },
 	{ name: "SBC", cycles: 4, page_cost: 1, size: 3, addr_mode: AddressingModes.modeAbsoluteY, op:(cpu: CPU, data: OpData) => { cpu.SBC(data);} },
 	{ name: "*NOP", cycles: 2, page_cost: 0, size: 1, addr_mode: AddressingModes.modeImplied, op:(cpu: CPU, data: OpData) => { cpu.NOP(data);}, noData: true },
@@ -308,29 +306,57 @@ const opcodes: Opcode[] = [
 	{ name: "*ISB", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.ISB(data);} }	
 ];
 
+// todo: cycle is useless, this is already returning the final address so will not be called again
 const AddressDecoders: any = {
-    [AddressingModes.modeAbsolute]: (opcode: Opcode, cpu: CPU) => { return cpu.memory.read16(cpu.PC + 1); },
-    [AddressingModes.modeAbsoluteX]: (opcode: Opcode, cpu: CPU) => { return 0xFFFF & (cpu.memory.read16(cpu.PC+1) + cpu.X); },
-    [AddressingModes.modeAbsoluteY]: (opcode: Opcode, cpu: CPU) => { return 0xFFFF & (cpu.memory.read16(cpu.PC+1) + cpu.Y); },
-    [AddressingModes.modeAccumulator]: (opcode: Opcode, cpu: CPU) => { return 0; },
-    [AddressingModes.modeImmediate]: (opcode: Opcode, cpu: CPU) => {
+    [AddressingModes.modeAbsolute]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => { return cpu.memory.read16(cpu.PC + 1); },
+    [AddressingModes.modeAbsoluteX]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {
+		let val: OpData = 0xFFFF & (cpu.memory.read16(cpu.PC+1) + cpu.X);
+
+		if (cycle && cpu.pagesDiffer((val-cpu.X) & 0xFFFF, val))
+			cpu.cyclesToAdd += opcode.page_cost;
+
+		return val;
+	},
+    [AddressingModes.modeAbsoluteY]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {
+		let val: OpData = 0xFFFF & (cpu.memory.read16(cpu.PC+1) + cpu.Y);
+
+		if (cycle && cpu.pagesDiffer((val-cpu.Y) & 0xFFFF, val))
+			cpu.cyclesToAdd += opcode.page_cost;
+
+		return val;
+	},
+    [AddressingModes.modeAccumulator]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => { return 0; },
+    [AddressingModes.modeImmediate]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {
 		return cpu.PC + 1;
 	},
-	[AddressingModes.modeImplied]: (opcode: Opcode, cpu: CPU) => { return 0; },	
-    [AddressingModes.modeIndexedIndirect]: (opcode: Opcode, cpu: CPU) => {
-		return cpu.memory.read16bug(0xFF & (cpu.memory.read(cpu.PC + 1) + cpu.X));
+	[AddressingModes.modeImplied]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => { return 0; },	
+    [AddressingModes.modeIndexedIndirect]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {
+		let val: OpData = cpu.memory.read16bug(0xFF & (cpu.memory.read(cpu.PC + 1) + cpu.X));		
+		return val;
 	},
-    [AddressingModes.modeIndirect]: (opcode: Opcode, cpu: CPU) => {		
-		return cpu.memory.read16bug(cpu.memory.read16(cpu.PC + 1));
+    [AddressingModes.modeIndirect]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {		
+		let val: OpData = cpu.memory.read16bug(cpu.memory.read16(cpu.PC + 1));
+		return val;
 	},
-	[AddressingModes.modeIndirectIndexed]: (opcode: Opcode, cpu: CPU) => {
+	[AddressingModes.modeIndirectIndexed]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {
 		let val = cpu.memory.read16bug(0xFF & (cpu.memory.read(cpu.PC + 1) & 0xFF)) + cpu.Y;
-		return val & 0xFFFF;		
+		val &= 0xFFFF;				
+
+		// console.log("---------");
+		// console.log("before add", cpu.memory.read16bug(0xFF & (cpu.memory.read(cpu.PC + 1) & 0xFF)).toString(16));
+		// console.log(`cpu.Y: ${(cpu.Y).toString(16)}`)
+		// console.log(`val: ${(val).toString(16)}`)
+		// console.log(`val-cpu.Y: ${(((val-cpu.Y) & 0xFFFF)).toString(16)}`)
+		
+		if (cycle && cpu.pagesDiffer((val-cpu.Y) & 0xFFFF, val))
+			cpu.cyclesToAdd += opcode.page_cost;
+
+		return val;
 	},
-    [AddressingModes.modeRelative]: (opcode: Opcode, cpu: CPU) => { let offset = cpu.memory.read(cpu.PC + 1); if (offset < 0x80) { return offset + cpu.PC + 2; } else { return offset + cpu.PC + 2 - 0x100;}},
-    [AddressingModes.modeZeroPage]: (opcode: Opcode, cpu: CPU) => { return 0xFF & cpu.memory.read(cpu.PC + 1); },
-    [AddressingModes.modeZeroPageX]: (opcode: Opcode, cpu: CPU) => { return 0xFF & cpu.memory.read(cpu.PC + 1) + cpu.X; },
-    [AddressingModes.modeZeroPageY]: (opcode: Opcode, cpu: CPU) => { return 0xFF & cpu.memory.read(cpu.PC + 1) + cpu.Y; }
+    [AddressingModes.modeRelative]: (opcode: Opcode, cpu: CPU, noCycle: boolean = false) => { let offset = cpu.memory.read(cpu.PC + 1); if (offset < 0x80) { return offset + cpu.PC + 2; } else { return offset + cpu.PC + 2 - 0x100;}},
+    [AddressingModes.modeZeroPage]: (opcode: Opcode, cpu: CPU, noCycle: boolean = false) => { return 0xFF & cpu.memory.read(cpu.PC + 1); },
+    [AddressingModes.modeZeroPageX]: (opcode: Opcode, cpu: CPU, noCycle: boolean = false) => { return 0xFF & cpu.memory.read(cpu.PC + 1) + cpu.X; },
+    [AddressingModes.modeZeroPageY]: (opcode: Opcode, cpu: CPU, noCycle: boolean = false) => { return 0xFF & cpu.memory.read(cpu.PC + 1) + cpu.Y; }
 };
 
 const AddressDecodersPrefix: any = {
@@ -357,9 +383,12 @@ export class CPU {
     PC: Register;
     SP:  Register;
     P:  Register;
-    cycles: number;
+	cycles: number;
+	cyclesToAdd: number;
+	PPUCNT1: number;
+	PPUCNT2: number;
     rom: ROM;
-	debugOpcode: any[];
+	debugOpcode: string;
 	currentOpcode: Opcode;
 	currentData: any;
 
@@ -371,7 +400,10 @@ export class CPU {
         this.P = 0x24; // it can be 0x34 or 0x24 as the fifth bit is ignored/reserved
         this.PC = 0;
 
-        this.cycles = 0;
+		this.cycles = 7;
+		this.cyclesToAdd = 0;
+		this.PPUCNT1 = 0;
+		this.PPUCNT2 = 0;
         this.memory = new Memory();
         this.rom = rom;
 
@@ -383,6 +415,16 @@ export class CPU {
         }
         
         this.PC = 0xC000;
+	}
+
+	pagesDiffer(a: number, b: number): boolean {
+		return (a & 0xFF00) != (b & 0xFF00);
+	}
+
+	addPageCycles(a: number, b: number) {
+		this.cycles++;
+		if (this.pagesDiffer(a, b))
+			this.cycles++;		
 	}
 	
 	prettyHex(data: number, padStart = 4) {
@@ -396,7 +438,7 @@ export class CPU {
 		this.currentData = opcodeData;
 		this.currentOpcode = opcode;
 		
-		// immediate mode receives address to direct data in next byte(s), so just read it for display purposes
+		// todo: maybe addresser should just return memory read instead of this case
 		if (opcode.addr_mode == AddressingModes.modeImmediate)
 			data = this.memory.read(opcodeData);
 
@@ -412,7 +454,8 @@ export class CPU {
 		output.push(_data.join(' '));
 
 		let instruction = opcode.name;
-				
+		
+		// display the data of opcode
 		if (!opcode.noData &&
 			opcode.addr_mode != AddressingModes.modeIndexedIndirect &&
 			opcode.addr_mode != AddressingModes.modeIndirectIndexed &&
@@ -428,22 +471,30 @@ export class CPU {
 			instruction += ' '+ prefix + data.toString(16).toUpperCase().padStart(size, '0');
 		}
 		
+		
 		if (!opcode.noData) {
-			if (opcode.displayMemoryContent) {
-				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');
+			if (opcode.showMemValue)
+				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');			
+
+			if (opcode.addr_mode == AddressingModes.modeAbsolute) {
+				
 			}
-			
+
+			if (opcode.addr_mode == AddressingModes.modeZeroPage) {
+				
+			}
+
 			if (opcode.addr_mode == AddressingModes.modeAbsoluteX) {
 				let addr = this.memory.read16(this.PC + 1);
 				let val = this.memory.read(0xFFFF & (addr + this.X));
-				instruction += ` $${this.prettyHex(addr)} X @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;
+				instruction += ` $${this.prettyHex(addr)},X @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;
 			}
 
 			if (opcode.addr_mode == AddressingModes.modeAbsoluteY) {
 				let addr = this.memory.read16(this.PC + 1);			
 				// let val = this.memory.read(data);					
 				let val = this.memory.read(0xFFFF & (addr + this.Y));	
-				instruction += ` $${this.prettyHex(addr)} Y @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;			
+				instruction += ` $${this.prettyHex(addr)},Y @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;			
 			}
 
 			if (opcode.addr_mode == AddressingModes.modeIndirect) {
@@ -451,7 +502,7 @@ export class CPU {
 				let val = addr;
 
 				instruction += ` ($${this.prettyHex(addr)}) = ${this.prettyHex(data)}`;
-			}
+			}			
 
 			if (opcode.addr_mode == AddressingModes.modeZeroPageX) {
 				let addr = this.memory.read(this.PC + 1);
@@ -459,7 +510,7 @@ export class CPU {
 				let finalAddr = (addr+this.X) & 0xFF;
 				let finalAddrStr = finalAddr.toString(16).toUpperCase().padStart(2, '0');
 
-				instruction += ` $${addrStr} X @ ${finalAddrStr}`;			
+				instruction += ` $${addrStr},X @ ${finalAddrStr}`;			
 				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');			
 			}
 
@@ -469,7 +520,7 @@ export class CPU {
 				let finalAddr = (addr+this.Y) & 0xFF;
 				let finalAddrStr = finalAddr.toString(16).toUpperCase().padStart(2, '0');
 
-				instruction += ` $${addrStr} Y @ ${finalAddrStr}`;			
+				instruction += ` $${addrStr},Y @ ${finalAddrStr}`;			
 				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');			
 			}
 
@@ -479,20 +530,20 @@ export class CPU {
 				let addrStr = this.prettyHex(addr, 2);
 				let val = this.memory.read16bug((this.memory.read(this.PC + 1) & 0xFF));
 				
-				instruction += ` ($${addrStr}) Y`;
+				instruction += ` ($${addrStr}),Y`;
 				instruction += ' = ' + (val).toString(16).toUpperCase().padStart(4, '0');			
 				instruction += ' @ ' + data.toString(16).toUpperCase().padStart(4, '0');			
 				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');						
 			}
 
-			if (opcode.displayIndexedIndirectMemoryContent) {
+			if (opcode.addr_mode == AddressingModes.modeIndexedIndirect) {
 				let addr = this.memory.read(this.PC + 1);
 
 				let addrStr = addr.toString(16).toUpperCase().padStart(2, '0');
 				let finalAddr = (addr+this.X) & 0xFF;
 				let finalAddrStr = finalAddr.toString(16).toUpperCase().padStart(2, '0');
 
-				instruction += ` ($${addrStr} X) @ ${finalAddrStr}`;
+				instruction += ` ($${addrStr},X) @ ${finalAddrStr}`;
 				instruction += ' = ' + data.toString(16).toUpperCase().padStart(4, '0');			
 				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');			
 			}
@@ -504,8 +555,9 @@ export class CPU {
 		output.push('Y:' + this.Y.toString(16).toUpperCase().padStart(2, '0'));
 		output.push('P:' + this.P.toString(16).toUpperCase().padStart(2, '0'));
 		output.push('SP:' + this.SP.toString(16).toUpperCase().padStart(2, '0'));		
-		
-		this.debugOpcode = output;
+		// output.push(`PPU:${this.PPUCNT1.toString().padStart(2, ' ')},${this.PPUCNT2.toString().padStart(2, ' ')}`);
+		output.push('CYC:' + this.cycles);
+		this.debugOpcode = output.join(' ');
 	}
 
     step() {        
@@ -514,8 +566,11 @@ export class CPU {
 		let opcode = this.currentOpcode;
 		let data = this.currentData;
 
+		// console.log('after ', opcode.name, '->', this.cycles, '->', this.cycles + opcode.cycles);
         this.PC += opcode.size;
 		this.cycles += opcode.cycles;
+		this.cycles += this.cyclesToAdd;
+		this.cyclesToAdd = 0;
 		
 		opcode.op(this, data);		
     }
@@ -640,6 +695,7 @@ export class CPU {
     
     BPL(data: OpData): void {
 		if (!(this.P & 0b10000000)) {
+			this.addPageCycles(this.PC, data);
 			this.PC = data;
 		}	 
     }
@@ -652,32 +708,14 @@ export class CPU {
 		this.push16(this.PC-1);
 		this.PC = data;
     }
-    
+		
     AND(data: OpData): void {
 		let val = this.memory.read(data);
 		this.A = this.A & val;
 		this.setZN(this.A);
     }
-    
-    // RLA(data: OpData): void {
-	// 	this.setC(this.memory.read(data));
-		
-	// 	console.log("==== RLA ====");
-	// 	console.log(`data: ${this.prettyHex(data)}`);
-	// 	console.log(`[data]: ${this.prettyHex(this.memory.read(data))}`);
-	// 	console.log(`this.A: ${this.prettyHex(this.A)}`);		
-		
-	// 	this.ROL(data);
-		
-	// 	console.log(`[data] after rol: ${this.prettyHex(this.memory.read(data))}`);
-	// 	console.log(`this.A after rol: ${this.prettyHex(this.A)}`);
-		
-	// 	this.AND(data);
-		
-	// 	console.log(`this.A after end: ${this.prettyHex(this.A)}`);
-	// }
-	
-	RLA(data: OpData): void { // todo: why the fuck doesn it work with the implementation above!!!!!
+        
+	RLA(data: OpData): void {
 		let temp = this.memory.read(data);
 		let add = this.P & 1;
 		this.setC(temp);
@@ -723,6 +761,7 @@ export class CPU {
     
     BMI(data: OpData): void {		
 		if (this.P & 0b10000000) {
+			this.addPageCycles(this.PC, data);
 			this.PC = data;
 		}		
     }
@@ -777,6 +816,7 @@ export class CPU {
     
     BVC(data: OpData): void {
         if (!(this.P & 0b01000000)) {
+			this.addPageCycles(this.PC, data);
 			this.PC = data;
 		}	
     }
@@ -852,6 +892,7 @@ export class CPU {
     
     BVS(data: OpData): void {		
 		if (this.P & 0b01000000) {
+			this.addPageCycles(this.PC, data);
 			this.PC = data;
 		}	
     }
@@ -893,6 +934,7 @@ export class CPU {
     
     BCC(data: OpData): void {		
 		if (!(this.P & 0b00000001)) {
+			this.addPageCycles(this.PC, data);
 			this.PC = data;		
 		} 
     }
@@ -954,8 +996,9 @@ export class CPU {
 		this.setZN(this.X);
     }
     
-    BCS(data: OpData): void {		
+    BCS(data: OpData): void {
 		if (this.P & 0b00000001) {
+			this.addPageCycles(this.PC, data);
 			this.PC = data;
 		}
     }
@@ -1014,6 +1057,7 @@ export class CPU {
     
     BNE(data: OpData): void {
 		if (!(this.P & 0b00000010)) {
+			this.addPageCycles(this.PC, data);
 			this.PC = data;
 		} 
     }
@@ -1093,6 +1137,7 @@ export class CPU {
 		
     BEQ(data: OpData): void {		
 		if (this.P & 0b00000010) {
+			this.addPageCycles(this.PC, data);
 			this.PC = data;
 		}		 
     }

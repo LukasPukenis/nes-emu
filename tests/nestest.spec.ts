@@ -14,13 +14,10 @@ test("nestest.nes rom", async () => {
 
         for (let line of lines) {            
             nes.step();
-            let dump = nes.dump();                        
-            line = line.replace(/(\s{3,})/g, '  ').split('  ');
-            
-            let lineA = line.join(' ');
-            let lineB = dump.join(' ');
+            let dump = nes.dump();           
+            line = line.replace(/\s{2,}/g, ' ');
 
-            expect(lineB).toEqual(lineA);            
+            expect(dump).toEqual(line);
         }
     } catch(e) {
         throw e;
