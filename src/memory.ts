@@ -1,8 +1,12 @@
+import { NES } from "./nes";
+
 export class Memory {
+    nes: NES;
     private memory: Uint8Array;
     private ram: Uint8Array;
 
-    constructor() {
+    constructor(nes: NES) {
+        this.nes = nes;
         this.memory = new Uint8Array(0xFFFF);
         this.ram = new Uint8Array(2*1024);
 
@@ -14,12 +18,9 @@ export class Memory {
         // zero page? it's also mirrored twice: 0...0x7FF 0x800..0xFFF
         if (addr < 0x2000) {            
             return this.ram[ addr % 0x800 ] & 0xFF;
-        } else if (addr < 0x4000) {
+        } else if (addr < 0x4000 || addr == 0x4014) {
             // ppu            
-            return this.memory[ addr ] & 0xFF;
-        } else if (addr == 0x4014) {
-            // ppu            
-            return this.memory[ addr ] & 0xFF;
+            return this.nes.getPPU().read(addr);
         } else if (addr == 0x4015) {
             // apu            
             return this.memory[ addr ] & 0xFF;
@@ -53,12 +54,9 @@ export class Memory {
     write(addr: number, value: number) {        
         if (addr < 0x2000) {            
             this.ram[ addr % 0x800 ] = value;            
-        } else if (addr < 0x4000) {
+        } else if (addr < 0x4000 || addr == 0x4014) {
             // ppu
-            this.memory[ addr ] = value & 0xFF;
-        } else if (addr == 0x4014) {
-            // ppu
-            this.memory[ addr ] = value & 0xFF;
+            this.nes.getPPU().write(addr, value);
         } else if (addr == 0x4015) {
             // apu
             this.memory[ addr ] = value & 0xFF;

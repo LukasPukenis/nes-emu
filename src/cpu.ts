@@ -2,6 +2,10 @@ import { Memory } from './memory';
 import { ROM } from './rom';
 import { cpus } from 'os';
 import { timingSafeEqual } from 'crypto';
+import { PPU } from './ppu';
+import { NES } from './nes';
+
+export const CPU_FREQ = 1789773;
 
 export type Register = number;
 
@@ -376,23 +380,32 @@ const AddressDecodersPrefix: any = {
 };
 
 export class CPU {
-    memory: Memory;
+	ppu: PPU;    
     A:  Register;
     X:  Register;
     Y:  Register;
     PC: Register;
     SP:  Register;
     P:  Register;
+	
 	cycles: number;
 	cyclesToAdd: number;
+	memory: Memory;
+
 	PPUCNT1: number;
 	PPUCNT2: number;
-    rom: ROM;
+	rom: ROM;
+	nes: NES;
 	debugOpcode: string;
 	currentOpcode: Opcode;
 	currentData: any;
 
-    constructor(rom: ROM) {
+	constructor(nes: NES) {
+		this.nes = nes;
+		this.memory = nes.getMemory();
+	}
+
+    loadROM(rom: ROM) {		
         this.A = 0;
         this.X = 0;
         this.Y = 0;
@@ -402,9 +415,9 @@ export class CPU {
 
 		this.cycles = 7;
 		this.cyclesToAdd = 0;
+
 		this.PPUCNT1 = 0;
-		this.PPUCNT2 = 0;
-        this.memory = new Memory();
+		this.PPUCNT2 = 0;        
         this.rom = rom;
 
         let prgrom = this.rom.getPRGROMS()[0];
@@ -444,7 +457,7 @@ export class CPU {
 
 		let prefix = AddressDecodersPrefix[opcode.addr_mode];
 	
-		let output: string[] = [];
+		let output: string[] = [];		
 		output.push(this.PC.toString(16).toUpperCase().padStart(4, '0'));		
 
 		let _data = [];
@@ -557,7 +570,7 @@ export class CPU {
 		output.push('SP:' + this.SP.toString(16).toUpperCase().padStart(2, '0'));		
 		// output.push(`PPU:${this.PPUCNT1.toString().padStart(2, ' ')},${this.PPUCNT2.toString().padStart(2, ' ')}`);
 		output.push('CYC:' + this.cycles);
-		this.debugOpcode = output.join(' ');
+		this.debugOpcode = output.join(' ');		
 	}
 
     step() {        
@@ -573,6 +586,7 @@ export class CPU {
 		this.cyclesToAdd = 0;
 		
 		opcode.op(this, data);		
+		return this.cyclesToAdd;
     }
 
     dumpDebug() {

@@ -12,6 +12,7 @@ export class ROM {
     private path: string;
     private data: Int8Array;
     private prgroms: any[] = [];
+    private chrroms: any[] = [];
 
     constructor() {        
     }
@@ -39,15 +40,27 @@ export class ROM {
             return false;        
 
         let prgRomCnt = this.data[5];
+        let chrRomCnt = this.data[6];
         
         for (let i = 0; i < prgRomCnt; i++)            
             this.prgroms.push(this.data.slice(16 + i*0x4000, (i+1)*0x4000+16));
 
+        let chrOffset = prgRomCnt * 0x4000 + 16;
+        for (let i = 0; i < chrRomCnt; i++) {
+            this.chrroms.push(this.data.slice(chrOffset + i*0x2000, chrOffset + (i+1)*0x2000));
+        }
+
+        console.log(`PRG ROMS: #${prgRomCnt}`);
+        console.log(`CHR ROMS: #${chrRomCnt}`);
         return true;
     }
 
     getPRGROMS() {
         return this.prgroms;
+    }
+
+    getCHRROMS() {
+        return this.chrroms;
     }
 
     validate(data: Int8Array) {
