@@ -426,8 +426,11 @@ export class CPU {
         for (let i = 0; i < prgrom.length; i++) {
             this.memory.write(0xC000+i, prgrom[i]);
         }
-        
-        this.PC = 0xC000;
+		
+
+		// starting location for NROM is FFFC-FFFD
+		this.PC = (this.memory.read(0xFFFD) << 8) | this.memory.read(0xFFFC)
+		console.log("Starting @ ", this.prettyHex(this.PC));
 	}
 
 	pagesDiffer(a: number, b: number): boolean {
