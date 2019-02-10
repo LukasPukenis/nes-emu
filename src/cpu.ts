@@ -388,6 +388,7 @@ export class CPU {
     SP:  Register;
     P:  Register;
 	
+	stallCycles: number = 0;
 	cycles: number;
 	cyclesToAdd: number;
 	memory: Memory;
@@ -445,6 +446,10 @@ export class CPU {
 	
 	prettyHex(data: number, padStart = 4) {
 		return data.toString(16).toUpperCase().padStart(padStart, '0');
+	}
+	
+	setStall(cycles: number) {
+		this.stallCycles = cycles;
 	}
 	
 	decode() {
@@ -577,6 +582,11 @@ export class CPU {
 	}
 
     step() {        
+		if (this.stallCycles > 0) {
+			this.stallCycles--;
+			return 1;
+		}
+
 		this.decode();
 
 		let opcode = this.currentOpcode;

@@ -127,7 +127,12 @@ export class PPU {
     }
 
     writeDMA(value: number): void {
-        
+        let cpu = this.nes.getCPU();
+        let stall: number = 513;
+        if (cpu.cycles % 2 == 1)
+            stall++;
+
+        this.nes.getCPU().setStall(stall);
     }
 
     readAddress(value: number): number {

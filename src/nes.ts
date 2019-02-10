@@ -61,8 +61,7 @@ export class NES {
 
             // ppu runs at exactly 3 times the CPU clock
             for (let i = 0; i < 3*cpuCyclesUsed; i++)
-                this.ppu.step();
-            // console.log('=>', this.cpu.dumpDebug());
+                this.ppu.step();            
         }        
 
 
