@@ -379,6 +379,12 @@ const AddressDecodersPrefix: any = {
     [AddressingModes.modeZeroPageY]: '$'
 };
 
+enum Interrupt {
+	None,
+	NMI,
+	IRQ
+};
+
 export class CPU {
 	ppu: PPU;    
     A:  Register;
@@ -388,6 +394,7 @@ export class CPU {
     SP:  Register;
     P:  Register;
 	
+	interrupt: Interrupt = Interrupt.None;
 	stallCycles: number = 0;
 	cycles: number;
 	cyclesToAdd: number;
@@ -451,7 +458,7 @@ export class CPU {
 	setStall(cycles: number) {
 		this.stallCycles = cycles;
 	}
-	
+
 	decode() {
 		let opcode = opcodes[this.memory.read(this.PC)];		
 		let opcodeData: OpData = AddressDecoders[opcode.addr_mode](opcode, this);		
@@ -581,10 +588,23 @@ export class CPU {
 		this.debugOpcode = output.join(' ');		
 	}
 
-    step() {        
+	nmi() {
+		this.push16(this.PC);
+		this.PHP(0);
+		this.PC = this.memory.read16(0xFFFA)
+		this.SEI(0);
+		this.cyclesToAdd += 7
+	}
+
+    step() {
 		if (this.stallCycles > 0) {
 			this.stallCycles--;
 			return 1;
+		}
+
+		if (this.interrupt == Interrupt.NMI) {				
+			this.nmi();
+			this.interrupt = Interrupt.None;
 		}
 
 		this.decode();
@@ -601,6 +621,10 @@ export class CPU {
 		opcode.op(this, data);		
 		return this.cyclesToAdd;
     }
+
+	triggerNMI(): void {
+		this.interrupt = Interrupt.NMI;
+	}
 
     dumpDebug() {
 		return this.debugOpcode;

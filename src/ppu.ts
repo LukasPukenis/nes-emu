@@ -5,16 +5,6 @@ import { NES } from "./nes";
  * OAM - Object Attribute Memory, 64 entries, 4 bytes each
  */
 
-class Status {
-    blank: boolean;
-
-    getByte(): number {
-        let byte = 0;
-        byte |= Number(this.blank) << 7;
-
-        return byte;
-    }
-}
 
 export class PPU {
     nes: NES;
@@ -23,22 +13,161 @@ export class PPU {
     address: number;
     tempAddrToWrite: number;
     bufferedReadValue: number;
-    status: Status;
     
+    cycle: number = 0;
+    oddFrame: boolean = false;
+    scanLine: number = 0;
+    frame: number = 0;
+
+    maskGrayscale: boolean;
+    maskShowBG: boolean;
+    maskShowSprites: boolean;
+
+    controlIncrement: boolean;// 0: add 1; 1: add 32
+    controlNameTable: boolean;// 0: $2000; 1: $2400; 2: $2800; 3: $2C00
+    controlSpriteTable: boolean;// 0: $0000; 1: $1000; ignored in 8x16 mode
+    controlBackgroundTable: boolean;// 0: $0000; 1: $1000
+    controlSpriteSize: boolean;// 0: 8x8; 1: 8x16
+    controlMasterSlave: boolean;// 0: read EXT; 1: write EXT
+
+    generateNMI: boolean = false;
+    oamData: number[];
+    oamAddress: number = 0;
+    nmiOccurred: boolean = false;
+
     constructor(nes: NES) {
         this.nes = nes;
         this.vram = new Uint8Array(8*1024);
-        this.status = new Status();
     }
 
+    copyX() {
+        this.address = (this.address & 0xFBE0) |  | (this.tempAddrToWrite & 0x041F);
+    }
+
+    copyY() {
+
+    }
+
+    incrementX() {
+
+    }
+
+    incrementY() {
+
+    }
+    
+    storeTile() {
+
+    }
+    
+    fetchNameTableByte() {
+
+    }
+
+    fetchAttributeTableByte() {
+
+    }
+
+    fetchLowTileByte() {
+
+    }
+
+    fetchHighTileByte() {
+
+    }
+
+    renderPixel(): void {
+        throw new Error("NOT YET");
+    }
+
+    setVBlank(flag: boolean): void {
+        this.nmiOccurred = flag;
+    }
     step() {
+        if (this.generateNMI && this.nmiOccurred) {
+            this.nes.getCPU().triggerNMI();
+        }        
         
+        this.cycle++
+        if (this.cycle > 340) {
+            this.cycle = 0;
+            this.scanLine++;
+            if (this.scanLine > 261) {
+                this.scanLine = 0;
+                this.frame++;
+                this.oddFrame = !this.oddFrame;
+            }
+        }
+
+
+        //////////////
+        /////////////
+        let preLine = this.scanLine == 261;
+        let visibleLine = this.scanLine < 240;
+        let renderLine = preLine || visibleLine;
+        let preFetchCycle = this.cycle >= 321 && this.cycle <= 336;
+        let visibleCycle = this.cycle >= 1 && this.cycle <= 256;
+        let fetchCycle = preFetchCycle || visibleCycle;
+        let render: boolean = this.maskShowBG || this.maskShowSprites;
+
+        if (render) {
+            if (visibleCycle && visibleLine) {
+                renderPixel();
+            }     
+
+            if (renderLine && fetchCycle) {
+                let fetchAction = this.cycle % 8;
+                if (fetchAction == 0) {
+                    this.storeTile();
+                } else if (fetchAction == 1) {
+                    this.fetchNameTableByte();
+                } else if (fetchAction == 3) {
+                    this.fetchAttributeTableByte();
+                } else if (fetchAction == 5) {
+                    this.fetchLowTileByte();
+                } else if (fetchAction == 7) {
+                    this.fetchHighTileByte();
+                }
+            }
+
+            if (preLine && this.cycle >= 280 && this.cycle <= 304) {
+                this.copyY();
+            }
+
+            if (renderLine) {
+                if (fetchCycle && this.cycle % 8 == 0) {
+                    this.incrementX();
+                }
+
+                if (this.cycle == 256) {
+                    this.incrementY();
+                }
+
+                if (this.cycle == 257) {
+                    this.copyX();
+                }
+            }            
+        }
+       
+        ////////////
+        if (this.scanLine == 241 && this.cycle == 1) {
+            this.setVBlank(true);
+        }
+
+        if (this.scanLine == 261 && this.cycle == 1) {
+            this.setVBlank(false);
+        }
     }
 
     readStatus(): number {
-        let status = this.status.getByte();
-        this.status.blank = false;  // reading clears vblank bit
-        return status;
+        let result: number = 0;
+
+        if (this.nmiOccurred) {
+            result |= 1 << 7;
+        }
+
+        this.nmiOccurred = false;
+        return result;
     }    
 
     write(addr: number, value: number): void {
@@ -109,25 +238,43 @@ export class PPU {
 
         this.writeToggle = !this.writeToggle;
     }
-
-    writeControl(value: number): void {
-        
+    
+    writeControl(value: number): void {        
+        this.controlNameTable =   ((value >> 0) & 3) == 1;
+        this.controlIncrement =   ((value >> 2) & 1) == 1;
+        this.controlSpriteTable = ((value >> 3) & 1) == 1;
+        this.controlBackgroundTable = ((value >> 4) & 1) == 1;
+        this.controlSpriteSize =      ((value >> 5) & 1) == 1;
+        this.controlMasterSlave =     ((value >> 6) & 1) == 1 
+        this.generateNMI =            ((value >> 7) & 1) == 1;
     }
     
     writeMask(value: number): void {
-        
+        this.maskGrayscale = (value & 1) == 1;
+        this.maskShowBG = (value >> 3) == 1;
+        this.maskShowSprites = (value >> 4) == 1;
     }
 
     writeOAMAddress(value: number): void {
-        
+        this.oamAddress = value;    
     }
 
     writeOAMData(value: number): void {
-        
+        this.oamData[this.oamAddress] = value;
+        this.oamAddress++;    
     }
 
     writeDMA(value: number): void {
         let cpu = this.nes.getCPU();
+        let memory = this.nes.getMemory();
+
+        let addr = value << 8;
+        for (let i = 0; i < 256; i++) {
+            this.oamData[this.oamAddress] = memory.read(addr);
+            this.oamAddress++;
+            addr++;
+        }
+        
         let stall: number = 513;
         if (cpu.cycles % 2 == 1)
             stall++;
@@ -148,11 +295,11 @@ export class PPU {
     }
 
     readOAMAddress(value: number): number {
-        return 1;
+        return this.oamAddress;
     }
 
     readOAMData(value: number): number {
-        return 1;
+        return this.oamData[value];
     }
 
     readDMA(value: number): number {
