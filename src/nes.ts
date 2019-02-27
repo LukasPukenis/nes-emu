@@ -9,21 +9,22 @@ export class NES {
     private memory: Memory;
     private rom: ROM;
     private lastTime: number = 0;
-    private fuse: boolean = false;
-    private fuseFill: number = 0;
-    private fuseLimit: number = 100;
-
-    constructor() {
+    
+    constructor(canvas: HTMLCanvasElement) {
+        console.assert(canvas);
+        
         this.memory = new Memory(this);
-        this.ppu = new PPU(this);
+
+        this.ppu = new PPU(this, canvas && canvas.getContext('2d'));
+
         this.cpu = new CPU(this);  
     }
      
-    async load(path: string) {
+    async load(path: string, startingAddress?: number) {
         console.log('loading...');
         this.rom = new ROM();
         await this.rom.load(path)        
-        this.cpu.loadROM(this.rom);
+        this.cpu.loadROM(this.rom, startingAddress);
         console.log('loaded!');
     }
 
@@ -40,33 +41,26 @@ export class NES {
     }
 
     step() {
-
+        
         let currTime = new Date().getTime();
         let dt = currTime - this.lastTime;
         this.lastTime = currTime;
-        dt /= 1000.0;
+        dt /= 1.0;
+        // console.log('dt', dt);
 
-        let cyclesToRun = dt * CPU_FREQ;
-        if (!this.fuse)
-            console.log('cyclesToRun:', cyclesToRun);
+        let cyclesToRun = dt * CPU_FREQ / 10.0; // todo: why the fuck
+        // console.log('cyclesToRun:', cyclesToRun);
     
-        while (cyclesToRun > 0) {
-            if (this.fuse) return;
-            this.fuseFill++;
-            if (this.fuseFill >= this.fuseLimit)
-                this.fuse = true;
-
+        while (cyclesToRun > 0) {            
+            // console.log(this.cpu.dumpDebug());
+            
             let cpuCyclesUsed = this.cpu.step();
             cyclesToRun -= cpuCyclesUsed;
-
+            
             // ppu runs at exactly 3 times the CPU clock
             for (let i = 0; i < 3*cpuCyclesUsed; i++)
                 this.ppu.step();            
-        }        
-
-
-        // for (let i = 0; i < cpuCycles; i++)
-        //     this.ppu.step();        
+        }
     }
 
     dump() {
@@ -85,8 +79,11 @@ export class NES {
     }
 }
 
-const path = './roms/DonkeyKong.nes';
-let nes = new NES();
+// const path = './roms/DonkeyKong.nes';
+const path = './roms/bkg.nes';
+
+let nes = new NES(document.getElementById('canvas') as HTMLCanvasElement);
 nes.load(path).then(() => {    
     nes.run();
 });
+

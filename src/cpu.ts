@@ -413,7 +413,7 @@ export class CPU {
 		this.memory = nes.getMemory();
 	}
 
-    loadROM(rom: ROM) {		
+    loadROM(rom: ROM, startingAddress?: number) {		
         this.A = 0;
         this.X = 0;
         this.Y = 0;
@@ -432,12 +432,17 @@ export class CPU {
         console.assert(prgrom.length == 0x4000, prgrom.length, 0x4000);
         
         for (let i = 0; i < prgrom.length; i++) {
-            this.memory.write(0xC000+i, prgrom[i]);
+			this.memory.write(0x8000+i, prgrom[i]);
+			this.memory.write(0xC000+i, prgrom[i]); // todo: wrap in a wrapper with mirrors
         }
 		
 
 		// starting location for NROM is FFFC-FFFD
-		this.PC = (this.memory.read(0xFFFD) << 8) | this.memory.read(0xFFFC)
+		if (!startingAddress)
+			this.PC = (this.memory.read(0xFFFD) << 8) | this.memory.read(0xFFFC)
+		else
+			this.PC = startingAddress;
+			
 		console.log("Starting @ ", this.prettyHex(this.PC));
 	}
 
@@ -613,13 +618,15 @@ export class CPU {
 		let data = this.currentData;
 
 		// console.log('after ', opcode.name, '->', this.cycles, '->', this.cycles + opcode.cycles);
-        this.PC += opcode.size;
-		this.cycles += opcode.cycles;
-		this.cycles += this.cyclesToAdd;
+		this.PC += opcode.size;
+		let cyclesWasted = opcode.cycles + this.cyclesToAdd;
+
+		this.cycles += cyclesWasted;
 		this.cyclesToAdd = 0;
 		
-		opcode.op(this, data);		
-		return this.cyclesToAdd;
+		opcode.op(this, data);
+
+		return cyclesWasted;
     }
 
 	triggerNMI(): void {

@@ -9,7 +9,7 @@ test("nestest.nes rom", async () => {
         let whole = data.toString();
         let lines = whole.split('\n');
 
-        let nes = new NES();
+        let nes = new NES(null);
         await nes.load('tests/nestest.nes');
 
         for (let line of lines) {            
