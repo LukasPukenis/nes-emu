@@ -41,33 +41,34 @@ export class NES {
     }
 
     step() {
-        
-        let currTime = new Date().getTime();
-        let dt = currTime - this.lastTime;
+        let currTime = new Date().getTime();        
+        let dt = (currTime - this.lastTime) / 1000.0;
         this.lastTime = currTime;
-        dt /= 1.0;
-        // console.log('dt', dt);
 
-        let cyclesToRun = dt * CPU_FREQ / 10.0; // todo: why the fuck
+        let cyclesToRun = dt * CPU_FREQ;
         // console.log('cyclesToRun:', cyclesToRun);
     
-        while (cyclesToRun > 0) {            
-            // console.log(this.cpu.dumpDebug());
-            
+        while (cyclesToRun > 0) {
             let cpuCyclesUsed = this.cpu.step();
-            cyclesToRun -= cpuCyclesUsed;
             
+            // if (this.startDebug && false)
+            // @ts-ignore
+            window.debug.push(this.cpu.dumpDebug());
+
+            cyclesToRun -= cpuCyclesUsed;
+                        
             // ppu runs at exactly 3 times the CPU clock
-            for (let i = 0; i < 3*cpuCyclesUsed; i++)
+            for (let i = 0; i < 3*cpuCyclesUsed; i++) {
+                let oldV = this.ppu.readStatus(false);
                 this.ppu.step();            
+                let newV = this.ppu.readStatus(false);
+                // if (oldV != newV && newV == 0) debugger
+            }
         }
+
     }
 
-    dump() {
-        return this.cpu.dumpDebug();
-    }
-
-    _step() {
+    _step(delta: number) {
         this.step();
 
         requestAnimationFrame(this._step.bind(this));
@@ -75,7 +76,7 @@ export class NES {
 
     run() {
         this.lastTime = new Date().getTime();
-        this._step();
+        requestAnimationFrame(this._step.bind(this));
     }
 }
 

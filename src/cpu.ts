@@ -408,6 +408,8 @@ export class CPU {
 	currentOpcode: Opcode;
 	currentData: any;
 
+	opcodeIndex: number;
+
 	constructor(nes: NES) {
 		this.nes = nes;
 		this.memory = nes.getMemory();
@@ -442,7 +444,7 @@ export class CPU {
 			this.PC = (this.memory.read(0xFFFD) << 8) | this.memory.read(0xFFFC)
 		else
 			this.PC = startingAddress;
-			
+
 		console.log("Starting @ ", this.prettyHex(this.PC));
 	}
 
@@ -465,79 +467,82 @@ export class CPU {
 	}
 
 	decode() {
-		let opcode = opcodes[this.memory.read(this.PC)];		
+		this.opcodeIndex = this.memory.read(this.PC);
+		let opcode = opcodes[this.opcodeIndex];
 		let opcodeData: OpData = AddressDecoders[opcode.addr_mode](opcode, this);		
-		let data: OpData = opcodeData;
 		this.currentData = opcodeData;
 		this.currentOpcode = opcode;
-		
-		// todo: maybe addresser should just return memory read instead of this case
-		if (opcode.addr_mode == AddressingModes.modeImmediate)
-			data = this.memory.read(opcodeData);
+	}
 
-		let prefix = AddressDecodersPrefix[opcode.addr_mode];
+	decodeDebug() {
+		let data: OpData = this.currentData;
+		// todo: maybe addresser should just return memory read instead of this case
+		if (this.currentOpcode.addr_mode == AddressingModes.modeImmediate)
+			data = this.memory.read(this.currentData);
+
+		let prefix = AddressDecodersPrefix[this.currentOpcode.addr_mode];
 	
 		let output: string[] = [];		
 		output.push(this.PC.toString(16).toUpperCase().padStart(4, '0'));		
 
 		let _data = [];
-		for (let i = 0; i < opcode.size; i++)
+		for (let i = 0; i < this.currentOpcode.size; i++)
 			_data.push(this.memory.read(this.PC + i).toString(16).toUpperCase().padStart(2, '0'));		
 
 		output.push(_data.join(' '));
 
-		let instruction = opcode.name;
+		let instruction = this.currentOpcode.name;
 		
 		// display the data of opcode
-		if (!opcode.noData &&
-			opcode.addr_mode != AddressingModes.modeIndexedIndirect &&
-			opcode.addr_mode != AddressingModes.modeIndirectIndexed &&
-			opcode.addr_mode != AddressingModes.modeIndirect &&
-			opcode.addr_mode != AddressingModes.modeAbsoluteX &&
-			opcode.addr_mode != AddressingModes.modeAbsoluteY &&
-			opcode.addr_mode != AddressingModes.modeZeroPageX &&
-			opcode.addr_mode != AddressingModes.modeZeroPageY) {
+		if (!this.currentOpcode.noData &&
+			this.currentOpcode.addr_mode != AddressingModes.modeIndexedIndirect &&
+			this.currentOpcode.addr_mode != AddressingModes.modeIndirectIndexed &&
+			this.currentOpcode.addr_mode != AddressingModes.modeIndirect &&
+			this.currentOpcode.addr_mode != AddressingModes.modeAbsoluteX &&
+			this.currentOpcode.addr_mode != AddressingModes.modeAbsoluteY &&
+			this.currentOpcode.addr_mode != AddressingModes.modeZeroPageX &&
+			this.currentOpcode.addr_mode != AddressingModes.modeZeroPageY) {
 			let size = 2;
-			if (opcode.addr_mode == AddressingModes.modeAbsolute)
+			if (this.currentOpcode.addr_mode == AddressingModes.modeAbsolute)
 				size = 4;
 
 			instruction += ' '+ prefix + data.toString(16).toUpperCase().padStart(size, '0');
 		}
 		
 		
-		if (!opcode.noData) {
-			if (opcode.showMemValue)
+		if (!this.currentOpcode.noData) {
+			if (this.currentOpcode.showMemValue)
 				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');			
 
-			if (opcode.addr_mode == AddressingModes.modeAbsolute) {
+			if (this.currentOpcode.addr_mode == AddressingModes.modeAbsolute) {
 				
 			}
 
-			if (opcode.addr_mode == AddressingModes.modeZeroPage) {
+			if (this.currentOpcode.addr_mode == AddressingModes.modeZeroPage) {
 				
 			}
 
-			if (opcode.addr_mode == AddressingModes.modeAbsoluteX) {
+			if (this.currentOpcode.addr_mode == AddressingModes.modeAbsoluteX) {
 				let addr = this.memory.read16(this.PC + 1);
 				let val = this.memory.read(0xFFFF & (addr + this.X));
 				instruction += ` $${this.prettyHex(addr)},X @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;
 			}
 
-			if (opcode.addr_mode == AddressingModes.modeAbsoluteY) {
+			if (this.currentOpcode.addr_mode == AddressingModes.modeAbsoluteY) {
 				let addr = this.memory.read16(this.PC + 1);			
 				// let val = this.memory.read(data);					
 				let val = this.memory.read(0xFFFF & (addr + this.Y));	
 				instruction += ` $${this.prettyHex(addr)},Y @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;			
 			}
 
-			if (opcode.addr_mode == AddressingModes.modeIndirect) {
+			if (this.currentOpcode.addr_mode == AddressingModes.modeIndirect) {
 				let addr = this.memory.read16(this.PC + 1);
 				let val = addr;
 
 				instruction += ` ($${this.prettyHex(addr)}) = ${this.prettyHex(data)}`;
 			}			
 
-			if (opcode.addr_mode == AddressingModes.modeZeroPageX) {
+			if (this.currentOpcode.addr_mode == AddressingModes.modeZeroPageX) {
 				let addr = this.memory.read(this.PC + 1);
 				let addrStr = addr.toString(16).toUpperCase().padStart(2, '0');
 				let finalAddr = (addr+this.X) & 0xFF;
@@ -547,7 +552,7 @@ export class CPU {
 				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');			
 			}
 
-			if (opcode.addr_mode == AddressingModes.modeZeroPageY) {
+			if (this.currentOpcode.addr_mode == AddressingModes.modeZeroPageY) {
 				let addr = this.memory.read(this.PC + 1);
 				let addrStr = addr.toString(16).toUpperCase().padStart(2, '0');
 				let finalAddr = (addr+this.Y) & 0xFF;
@@ -557,7 +562,7 @@ export class CPU {
 				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');			
 			}
 
-			if (opcode.addr_mode == AddressingModes.modeIndirectIndexed) {
+			if (this.currentOpcode.addr_mode == AddressingModes.modeIndirectIndexed) {
 				let addr = this.memory.read(this.PC + 1);
 				
 				let addrStr = this.prettyHex(addr, 2);
@@ -569,7 +574,7 @@ export class CPU {
 				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');						
 			}
 
-			if (opcode.addr_mode == AddressingModes.modeIndexedIndirect) {
+			if (this.currentOpcode.addr_mode == AddressingModes.modeIndexedIndirect) {
 				let addr = this.memory.read(this.PC + 1);
 
 				let addrStr = addr.toString(16).toUpperCase().padStart(2, '0');
@@ -596,8 +601,8 @@ export class CPU {
 	nmi() {
 		this.push16(this.PC);
 		this.PHP(0);
-		this.PC = this.memory.read16(0xFFFA)
-		this.SEI(0);
+		this.PC = this.memory.read16(0xFFFA);
+		this.SEI(1);
 		this.cyclesToAdd += 7
 	}
 
@@ -610,26 +615,1322 @@ export class CPU {
 		if (this.interrupt == Interrupt.NMI) {				
 			this.nmi();
 			this.interrupt = Interrupt.None;
-		}
+		}		
 
 		this.decode();
+		this.decodeDebug(); // todo: uncomment after testing
 
 		let opcode = this.currentOpcode;
 		let data = this.currentData;
 
 		// console.log('after ', opcode.name, '->', this.cycles, '->', this.cycles + opcode.cycles);
-		this.PC += opcode.size;
-		let cyclesWasted = opcode.cycles + this.cyclesToAdd;
+		// this.PC += opcode.size;
+		// let cyclesWasted = opcode.cycles + this.cyclesToAdd;
+		let cyclesWasted = this.cyclesToAdd;		
+		
+		// opcode.op(this, data);
+		/////////////////////
+		/////////////////////
+		/////////////////////
+		/////////////////////
+		
+		switch (this.opcodeIndex) {
+			case 0:
+	cyclesWasted += 7;
+	this.PC += 1;
+	this.BRK(data);
+	break;
+case 1:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.ORA(data);
+	break;
+case 2:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 3:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.SLO(data);
+	break;
+case 4:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 5:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.ORA(data);
+	break;
+case 6:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.ASL(data);
+	break;
+case 7:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.SLO(data);
+	break;
+case 8:
+	cyclesWasted += 3;
+	this.PC += 1;
+	this.PHP(data);
+	break;
+case 9:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.ORA(data);
+	break;
+case 10:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.ASLA(data);
+	break;
+case 11:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.ANC(data);
+	break;
+case 12:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.NOP(data);
+	break;
+case 13:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.ORA(data);
+	break;
+case 14:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.ASL(data);
+	break;
+case 15:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.SLO(data);
+	break;
+case 16:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.BPL(data);
+	break;
+case 17:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.ORA(data);
+	break;
+case 18:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 19:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.SLO(data);
+	break;
+case 20:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 21:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.ORA(data);
+	break;
+case 22:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.ASL(data);
+	break;
+case 23:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.SLO(data);
+	break;
+case 24:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.CLC(data);
+	break;
+case 25:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.ORA(data);
+	break;
+case 26:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.NOP(data);
+	break;
+case 27:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.SLO(data);
+	break;
+case 28:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.NOP(data);
+	break;
+case 29:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.ORA(data);
+	break;
+case 30:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.ASL(data);
+	break;
+case 31:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.SLO(data);
+	break;
+case 32:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.JSR(data);
+	break;
+case 33:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.AND(data);
+	break;
+case 34:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 35:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.RLA(data);
+	break;
+case 36:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.BIT(data);
+	break;
+case 37:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.AND(data);
+	break;
+case 38:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.ROL(data);
+	break;
+case 39:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.RLA(data);
+	break;
+case 40:
+	cyclesWasted += 4;
+	this.PC += 1;
+	this.PLP(data);
+	break;
+case 41:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.AND(data);
+	break;
+case 42:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.ROLA(data);
+	break;
+case 43:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.ANC(data);
+	break;
+case 44:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.BIT(data);
+	break;
+case 45:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.AND(data);
+	break;
+case 46:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.ROL(data);
+	break;
+case 47:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.RLA(data);
+	break;
+case 48:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.BMI(data);
+	break;
+case 49:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.AND(data);
+	break;
+case 50:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 51:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.RLA(data);
+	break;
+case 52:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 53:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.AND(data);
+	break;
+case 54:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.ROL(data);
+	break;
+case 55:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.RLA(data);
+	break;
+case 56:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.SEC(data);
+	break;
+case 57:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.AND(data);
+	break;
+case 58:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.NOP(data);
+	break;
+case 59:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.RLA(data);
+	break;
+case 60:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.NOP(data);
+	break;
+case 61:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.AND(data);
+	break;
+case 62:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.ROL(data);
+	break;
+case 63:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.RLA(data);
+	break;
+case 64:
+	cyclesWasted += 6;
+	this.PC += 1;
+	this.RTI(data);
+	break;
+case 65:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.EOR(data);
+	break;
+case 66:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 67:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.SRE(data);
+	break;
+case 68:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 69:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.EOR(data);
+	break;
+case 70:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.LSR(data);
+	break;
+case 71:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.SRE(data);
+	break;
+case 72:
+	cyclesWasted += 3;
+	this.PC += 1;
+	this.PHA(data);
+	break;
+case 73:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.EOR(data);
+	break;
+case 74:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.LSRA(data);
+	break;
+case 75:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.ALR(data);
+	break;
+case 76:
+	cyclesWasted += 3;
+	this.PC += 3;
+	this.JMP(data);
+	break;
+case 77:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.EOR(data);
+	break;
+case 78:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.LSR(data);
+	break;
+case 79:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.SRE(data);
+	break;
+case 80:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.BVC(data);
+	break;
+case 81:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.EOR(data);
+	break;
+case 82:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 83:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.SRE(data);
+	break;
+case 84:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 85:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.EOR(data);
+	break;
+case 86:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.LSR(data);
+	break;
+case 87:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.SRE(data);
+	break;
+case 88:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.CLI(data);
+	break;
+case 89:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.EOR(data);
+	break;
+case 90:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.NOP(data);
+	break;
+case 91:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.SRE(data);
+	break;
+case 92:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.NOP(data);
+	break;
+case 93:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.EOR(data);
+	break;
+case 94:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.LSR(data);
+	break;
+case 95:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.SRE(data);
+	break;
+case 96:
+	cyclesWasted += 6;
+	this.PC += 1;
+	this.RTS(data);
+	break;
+case 97:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.ADC(data);
+	break;
+case 98:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 99:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.RRA(data);
+	break;
+case 100:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 101:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.ADC(data);
+	break;
+case 102:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.ROR(data);
+	break;
+case 103:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.RRA(data);
+	break;
+case 104:
+	cyclesWasted += 4;
+	this.PC += 1;
+	this.PLA(data);
+	break;
+case 105:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.ADC(data);
+	break;
+case 106:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.RORA(data);
+	break;
+case 107:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.ARR(data);
+	break;
+case 108:
+	cyclesWasted += 5;
+	this.PC += 3;
+	this.JMP(data);
+	break;
+case 109:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.ADC(data);
+	break;
+case 110:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.ROR(data);
+	break;
+case 111:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.RRA(data);
+	break;
+case 112:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.BVS(data);
+	break;
+case 113:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.ADC(data);
+	break;
+case 114:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 115:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.RRA(data);
+	break;
+case 116:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 117:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.ADC(data);
+	break;
+case 118:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.ROR(data);
+	break;
+case 119:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.RRA(data);
+	break;
+case 120:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.SEI(data);
+	break;
+case 121:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.ADC(data);
+	break;
+case 122:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.NOP(data);
+	break;
+case 123:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.RRA(data);
+	break;
+case 124:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.NOP(data);
+	break;
+case 125:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.ADC(data);
+	break;
+case 126:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.ROR(data);
+	break;
+case 127:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.RRA(data);
+	break;
+case 128:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 129:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.STA(data);
+	break;
+case 130:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 131:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.SAX(data);
+	break;
+case 132:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.STY(data);
+	break;
+case 133:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.STA(data);
+	break;
+case 134:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.STX(data);
+	break;
+case 135:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.SAX(data);
+	break;
+case 136:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.DEY(data);
+	break;
+case 137:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 138:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.TXA(data);
+	break;
+case 139:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.XAA(data);
+	break;
+case 140:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.STY(data);
+	break;
+case 141:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.STA(data);
+	break;
+case 142:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.STX(data);
+	break;
+case 143:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.SAX(data);
+	break;
+case 144:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.BCC(data);
+	break;
+case 145:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.STA(data);
+	break;
+case 146:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 147:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.AHX(data);
+	break;
+case 148:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.STY(data);
+	break;
+case 149:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.STA(data);
+	break;
+case 150:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.STX(data);
+	break;
+case 151:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.SAX(data);
+	break;
+case 152:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.TYA(data);
+	break;
+case 153:
+	cyclesWasted += 5;
+	this.PC += 3;
+	this.STA(data);
+	break;
+case 154:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.TXS(data);
+	break;
+case 155:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.TAS(data);
+	break;
+case 156:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.SHY(data);
+	break;
+case 157:
+	cyclesWasted += 5;
+	this.PC += 3;
+	this.STA(data);
+	break;
+case 158:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.SHX(data);
+	break;
+case 159:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.AHX(data);
+	break;
+case 160:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.LDY(data);
+	break;
+case 161:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.LDA(data);
+	break;
+case 162:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.LDX(data);
+	break;
+case 163:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.LAX(data);
+	break;
+case 164:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.LDY(data);
+	break;
+case 165:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.LDA(data);
+	break;
+case 166:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.LDX(data);
+	break;
+case 167:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.LAX(data);
+	break;
+case 168:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.TAY(data);
+	break;
+case 169:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.LDA(data);
+	break;
+case 170:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.TAX(data);
+	break;
+case 171:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.LAX(data);
+	break;
+case 172:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.LDY(data);
+	break;
+case 173:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.LDA(data);
+	break;
+case 174:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.LDX(data);
+	break;
+case 175:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.LAX(data);
+	break;
+case 176:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.BCS(data);
+	break;
+case 177:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.LDA(data);
+	break;
+case 178:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 179:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.LAX(data);
+	break;
+case 180:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.LDY(data);
+	break;
+case 181:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.LDA(data);
+	break;
+case 182:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.LDX(data);
+	break;
+case 183:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.LAX(data);
+	break;
+case 184:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.CLV(data);
+	break;
+case 185:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.LDA(data);
+	break;
+case 186:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.TSX(data);
+	break;
+case 187:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.LAS(data);
+	break;
+case 188:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.LDY(data);
+	break;
+case 189:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.LDA(data);
+	break;
+case 190:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.LDX(data);
+	break;
+case 191:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.LAX(data);
+	break;
+case 192:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.CPY(data);
+	break;
+case 193:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.CMP(data);
+	break;
+case 194:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 195:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.DCP(data);
+	break;
+case 196:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.CPY(data);
+	break;
+case 197:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.CMP(data);
+	break;
+case 198:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.DEC(data);
+	break;
+case 199:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.DCP(data);
+	break;
+case 200:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.INY(data);
+	break;
+case 201:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.CMP(data);
+	break;
+case 202:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.DEX(data);
+	break;
+case 203:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.AXS(data);
+	break;
+case 204:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.CPY(data);
+	break;
+case 205:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.CMP(data);
+	break;
+case 206:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.DEC(data);
+	break;
+case 207:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.DCP(data);
+	break;
+case 208:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.BNE(data);
+	break;
+case 209:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.CMP(data);
+	break;
+case 210:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 211:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.DCP(data);
+	break;
+case 212:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 213:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.CMP(data);
+	break;
+case 214:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.DEC(data);
+	break;
+case 215:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.DCP(data);
+	break;
+case 216:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.CLD(data);
+	break;
+case 217:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.CMP(data);
+	break;
+case 218:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.NOP(data);
+	break;
+case 219:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.DCP(data);
+	break;
+case 220:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.NOP(data);
+	break;
+case 221:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.CMP(data);
+	break;
+case 222:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.DEC(data);
+	break;
+case 223:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.DCP(data);
+	break;
+case 224:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.CPX(data);
+	break;
+case 225:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.SBC(data);
+	break;
+case 226:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 227:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.ISB(data);
+	break;
+case 228:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.CPX(data);
+	break;
+case 229:
+	cyclesWasted += 3;
+	this.PC += 2;
+	this.SBC(data);
+	break;
+case 230:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.INC(data);
+	break;
+case 231:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.ISB(data);
+	break;
+case 232:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.INX(data);
+	break;
+case 233:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.SBC(data);
+	break;
+case 234:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.NOP(data);
+	break;
+case 235:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.SBC(data);
+	break;
+case 236:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.CPX(data);
+	break;
+case 237:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.SBC(data);
+	break;
+case 238:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.INC(data);
+	break;
+case 239:
+	cyclesWasted += 6;
+	this.PC += 3;
+	this.ISB(data);
+	break;
+case 240:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.BEQ(data);
+	break;
+case 241:
+	cyclesWasted += 5;
+	this.PC += 2;
+	this.SBC(data);
+	break;
+case 242:
+	cyclesWasted += 2;
+	this.PC += 2;
+	this.KIL(data);
+	break;
+case 243:
+	cyclesWasted += 8;
+	this.PC += 2;
+	this.ISB(data);
+	break;
+case 244:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.NOP(data);
+	break;
+case 245:
+	cyclesWasted += 4;
+	this.PC += 2;
+	this.SBC(data);
+	break;
+case 246:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.INC(data);
+	break;
+case 247:
+	cyclesWasted += 6;
+	this.PC += 2;
+	this.ISB(data);
+	break;
+case 248:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.SED(data);
+	break;
+case 249:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.SBC(data);
+	break;
+case 250:
+	cyclesWasted += 2;
+	this.PC += 1;
+	this.NOP(data);
+	break;
+case 251:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.ISB(data);
+	break;
+case 252:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.NOP(data);
+	break;
+case 253:
+	cyclesWasted += 4;
+	this.PC += 3;
+	this.SBC(data);
+	break;
+case 254:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.INC(data);
+	break;
+case 255:
+	cyclesWasted += 7;
+	this.PC += 3;
+	this.ISB(data);
+	break;		
+		}
 
 		this.cycles += cyclesWasted;
 		this.cyclesToAdd = 0;
 		
-		opcode.op(this, data);
+		/////////////////////
+		/////////////////////
+		/////////////////////
+		/////////////////////
+		
 
 		return cyclesWasted;
     }
 
 	triggerNMI(): void {
+		if (this.interrupt == Interrupt.NMI) console.log('was nmi in queue')
 		this.interrupt = Interrupt.NMI;
 	}
 
@@ -683,6 +1984,7 @@ export class CPU {
 
 	pop() {
 		this.SP++;
+		this.SP &= 0xFF;
 		return this.memory.read(0x100 | this.SP);
 	}
 
@@ -695,6 +1997,7 @@ export class CPU {
 	push(data: OpData) { // todo: make sure there's a huge difference between this and 16 variant - rename to 8 if needed		
 		this.memory.write(0x100 | this.SP, data);
 		this.SP--;
+		this.SP &= 0xFF;
 	}
 
 	push16(data: OpData) {
