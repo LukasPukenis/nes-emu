@@ -1,4 +1,5 @@
 import { NES } from "./nes";
+import { CPU } from "./cpu";
 
 /**
  * Abbreviations used:
@@ -19,6 +20,9 @@ export class PPU {
     scanLine: number = 0;
     frame: number = 0;
 
+    nmiDelay: number = 0;
+    register: number = 0;
+    nmiPrevious: boolean = false;
     maskGrayscale: boolean;
     maskShowBG: boolean;
     maskShowSprites: boolean;
@@ -30,12 +34,22 @@ export class PPU {
     controlSpriteSize: boolean;// 0: 8x8; 1: 8x16
     controlMasterSlave: boolean;// 0: read EXT; 1: write EXT
 
-    generateNMI: boolean = false;
-    oamData: number[];
+    generateNMI: boolean = true;
+    oamData: number[] = [];
     oamAddress: number = 0;
-    nmiOccurred: boolean = false;
+    v_blank: boolean = true;
 
-    constructor(nes: NES) {
+    canvas: CanvasRenderingContext2D;
+    imageData: ImageData;
+    pixels: Uint8ClampedArray;
+
+    constructor(nes: NES, canvas: CanvasRenderingContext2D) {    
+        this.canvas = canvas;
+        if (this.canvas) {
+            this.imageData = this.canvas.createImageData(256, 240);
+            this.pixels = this.imageData.data;
+        }
+
         this.nes = nes;
         this.vram = new Uint8Array(8*1024);
     }
@@ -80,13 +94,22 @@ export class PPU {
         throw new Error("NOT YET");
     }
 
-    setVBlank(flag: boolean): void {
-        this.nmiOccurred = flag;
+    nmiChange() {
+        let nmi = this.generateNMI && this.v_blank;
+
+        if (nmi && !this.nmiPrevious)
+            this.nmiDelay = 15;
+            
+        this.nmiPrevious = nmi;
     }
+    
     step() {
-        if (this.generateNMI && this.nmiOccurred) {
-            this.nes.getCPU().triggerNMI();
-        }        
+        if (this.nmiDelay > 0) {
+            this.nmiDelay--;
+            if (this.nmiDelay == 0 && this.v_blank && this.generateNMI) {
+                this.nes.getCPU().triggerNMI();
+            }
+        }
         
         this.cycle++
         if (this.cycle > 340) {
@@ -250,17 +273,21 @@ export class PPU {
     }
     
     writeMask(value: number): void {
+        console.log('write mask', value.toString(2));
+        debugger
         this.maskGrayscale = (value & 1) == 1;
         this.maskShowBG = (value >> 3) == 1;
         this.maskShowSprites = (value >> 4) == 1;
+        this.maskShowLeftBG = (value >> 1) == 1;
+        this.maskShowLeftSprites = (value >> 2) == 1;
     }
 
     writeOAMAddress(value: number): void {
-        this.oamAddress = value;    
+        this.oamAddress = value & 0xFFFF;
     }
 
     writeOAMData(value: number): void {
-        this.oamData[this.oamAddress] = value;
+        this.oamData[this.oamAddress] = value & 0xFFFF;
         this.oamAddress++;    
     }
 

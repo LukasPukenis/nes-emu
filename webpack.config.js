@@ -24,7 +24,7 @@ module.exports = {
   mode: 'development',
   context: __dirname,
   entry: {
-    'nes': './src/nes.ts',
+    'index': './src/index.ts',
   },
   output: {
     path: path.join(__dirname, 'dist/js/'),

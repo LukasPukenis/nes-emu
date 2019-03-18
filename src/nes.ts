@@ -53,16 +53,13 @@ export class NES {
             
             // if (this.startDebug && false)
             // @ts-ignore
-            window.debug.push(this.cpu.dumpDebug());
+            // window.debug.push(this.cpu.dumpDebug());
 
             cyclesToRun -= cpuCyclesUsed;
                         
             // ppu runs at exactly 3 times the CPU clock
             for (let i = 0; i < 3*cpuCyclesUsed; i++) {
-                let oldV = this.ppu.readStatus(false);
-                this.ppu.step();            
-                let newV = this.ppu.readStatus(false);
-                // if (oldV != newV && newV == 0) debugger
+                this.ppu.step();
             }
         }
 
@@ -79,12 +76,3 @@ export class NES {
         requestAnimationFrame(this._step.bind(this));
     }
 }
-
-// const path = './roms/DonkeyKong.nes';
-const path = './roms/bkg.nes';
-
-let nes = new NES(document.getElementById('canvas') as HTMLCanvasElement);
-nes.load(path).then(() => {    
-    nes.run();
-});
-
