@@ -10,11 +10,12 @@ test("nestest.nes rom", async () => {
         let lines = whole.split('\n');
 
         let nes = new NES(null);
-        await nes.load('tests/nestest.nes');
+        await nes.load('tests/nestest.nes', 0xC000);
 
+        // nes.getCPU().step();
         for (let line of lines) {            
-            nes.step();
-            let dump = nes.dump();           
+            nes.getCPU().step();
+            let dump = nes.getCPU().dumpDebug();           
             line = line.replace(/\s{2,}/g, ' ');
 
             expect(dump).toEqual(line);
