@@ -21,20 +21,20 @@ export enum StatusRegister {
 };
 
 enum AddressingModes {
-    __NO__MODE__,
-    modeAbsolute,
-	modeAbsoluteX,
-	modeAbsoluteY,
-	modeAccumulator,
-	modeImmediate,
-	modeImplied,
-	modeIndexedIndirect,
-	modeIndirect,
-	modeIndirectIndexed,
-	modeRelative,
-	modeZeroPage,
-	modeZeroPageX,
-	modeZeroPageY
+    __NO__MODE__ = 0,
+    modeAbsolute = 1,
+	modeAbsoluteX = 2,
+	modeAbsoluteY = 3,
+	modeAccumulator = 4,
+	modeImmediate = 5,
+	modeImplied = 6,
+	modeIndexedIndirect = 7,
+	modeIndirect = 8,
+	modeIndirectIndexed = 9,
+	modeRelative = 10,
+	modeZeroPage = 11,
+	modeZeroPageX = 12,
+	modeZeroPageY = 13
 };
 
 type OpData = number;
