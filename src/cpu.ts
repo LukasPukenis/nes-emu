@@ -310,59 +310,6 @@ const opcodes: Opcode[] = [
 	{ name: "*ISB", cycles: 7, page_cost: 0, size: 3, addr_mode: AddressingModes.modeAbsoluteX, op:(cpu: CPU, data: OpData) => { cpu.ISB(data);} }	
 ];
 
-// todo: cycle is useless, this is already returning the final address so will not be called again
-const AddressDecoders: any = {
-    [AddressingModes.modeAbsolute]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => { return cpu.memory.read16(cpu.PC + 1); },
-    [AddressingModes.modeAbsoluteX]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {
-		let val: OpData = 0xFFFF & (cpu.memory.read16(cpu.PC+1) + cpu.X);
-
-		if (cycle && cpu.pagesDiffer((val-cpu.X) & 0xFFFF, val))
-			cpu.cyclesToAdd += opcode.page_cost;
-
-		return val;
-	},
-    [AddressingModes.modeAbsoluteY]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {
-		let val: OpData = 0xFFFF & (cpu.memory.read16(cpu.PC+1) + cpu.Y);
-
-		if (cycle && cpu.pagesDiffer((val-cpu.Y) & 0xFFFF, val))
-			cpu.cyclesToAdd += opcode.page_cost;
-
-		return val;
-	},
-    [AddressingModes.modeAccumulator]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => { return 0; },
-    [AddressingModes.modeImmediate]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {
-		return cpu.PC + 1;
-	},
-	[AddressingModes.modeImplied]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => { return 0; },	
-    [AddressingModes.modeIndexedIndirect]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {
-		let val: OpData = cpu.memory.read16bug(0xFF & (cpu.memory.read(cpu.PC + 1) + cpu.X));		
-		return val;
-	},
-    [AddressingModes.modeIndirect]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {		
-		let val: OpData = cpu.memory.read16bug(cpu.memory.read16(cpu.PC + 1));
-		return val;
-	},
-	[AddressingModes.modeIndirectIndexed]: (opcode: Opcode, cpu: CPU, cycle: boolean = true) => {
-		let val = cpu.memory.read16bug(0xFF & (cpu.memory.read(cpu.PC + 1) & 0xFF)) + cpu.Y;
-		val &= 0xFFFF;				
-
-		// console.log("---------");
-		// console.log("before add", cpu.memory.read16bug(0xFF & (cpu.memory.read(cpu.PC + 1) & 0xFF)).toString(16));
-		// console.log(`cpu.Y: ${(cpu.Y).toString(16)}`)
-		// console.log(`val: ${(val).toString(16)}`)
-		// console.log(`val-cpu.Y: ${(((val-cpu.Y) & 0xFFFF)).toString(16)}`)
-		
-		if (cycle && cpu.pagesDiffer((val-cpu.Y) & 0xFFFF, val))
-			cpu.cyclesToAdd += opcode.page_cost;
-
-		return val;
-	},
-    [AddressingModes.modeRelative]: (opcode: Opcode, cpu: CPU, noCycle: boolean = false) => { let offset = cpu.memory.read(cpu.PC + 1); if (offset < 0x80) { return offset + cpu.PC + 2; } else { return offset + cpu.PC + 2 - 0x100;}},
-    [AddressingModes.modeZeroPage]: (opcode: Opcode, cpu: CPU, noCycle: boolean = false) => { return 0xFF & cpu.memory.read(cpu.PC + 1); },
-    [AddressingModes.modeZeroPageX]: (opcode: Opcode, cpu: CPU, noCycle: boolean = false) => { return 0xFF & cpu.memory.read(cpu.PC + 1) + cpu.X; },
-    [AddressingModes.modeZeroPageY]: (opcode: Opcode, cpu: CPU, noCycle: boolean = false) => { return 0xFF & cpu.memory.read(cpu.PC + 1) + cpu.Y; }
-};
-
 const AddressDecodersPrefix: any = {
 	[AddressingModes.modeAbsolute]: '$',
     [AddressingModes.modeAbsoluteX]: '$',
@@ -464,140 +411,8 @@ export class CPU {
 	
 	setStall(cycles: number) {
 		this.stallCycles = cycles;
-	}
-
-	decode() {
-		this.opcodeIndex = this.memory.read(this.PC);
-		let opcode = opcodes[this.opcodeIndex];
-		let opcodeData: OpData = AddressDecoders[opcode.addr_mode](opcode, this);		
-		this.currentData = opcodeData;
-		this.currentOpcode = opcode;
-	}
-
-	decodeDebug() {
-		let data: OpData = this.currentData;
-		// todo: maybe addresser should just return memory read instead of this case
-		if (this.currentOpcode.addr_mode == AddressingModes.modeImmediate)
-			data = this.memory.read(this.currentData);
-
-		let prefix = AddressDecodersPrefix[this.currentOpcode.addr_mode];
+	}	
 	
-		let output: string[] = [];		
-		output.push(this.PC.toString(16).toUpperCase().padStart(4, '0'));		
-
-		let _data = [];
-		for (let i = 0; i < this.currentOpcode.size; i++)
-			_data.push(this.memory.read(this.PC + i).toString(16).toUpperCase().padStart(2, '0'));		
-
-		output.push(_data.join(' '));
-
-		let instruction = this.currentOpcode.name;
-		
-		// display the data of opcode
-		if (!this.currentOpcode.noData &&
-			this.currentOpcode.addr_mode != AddressingModes.modeIndexedIndirect &&
-			this.currentOpcode.addr_mode != AddressingModes.modeIndirectIndexed &&
-			this.currentOpcode.addr_mode != AddressingModes.modeIndirect &&
-			this.currentOpcode.addr_mode != AddressingModes.modeAbsoluteX &&
-			this.currentOpcode.addr_mode != AddressingModes.modeAbsoluteY &&
-			this.currentOpcode.addr_mode != AddressingModes.modeZeroPageX &&
-			this.currentOpcode.addr_mode != AddressingModes.modeZeroPageY) {
-			let size = 2;
-			if (this.currentOpcode.addr_mode == AddressingModes.modeAbsolute)
-				size = 4;
-
-			instruction += ' '+ prefix + data.toString(16).toUpperCase().padStart(size, '0');
-		}
-		
-		
-		if (!this.currentOpcode.noData) {
-			if (this.currentOpcode.showMemValue)
-				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');			
-
-			if (this.currentOpcode.addr_mode == AddressingModes.modeAbsolute) {
-				
-			}
-
-			if (this.currentOpcode.addr_mode == AddressingModes.modeZeroPage) {
-				
-			}
-
-			if (this.currentOpcode.addr_mode == AddressingModes.modeAbsoluteX) {
-				let addr = this.memory.read16(this.PC + 1);
-				let val = this.memory.read(0xFFFF & (addr + this.X));
-				instruction += ` $${this.prettyHex(addr)},X @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;
-			}
-
-			if (this.currentOpcode.addr_mode == AddressingModes.modeAbsoluteY) {
-				let addr = this.memory.read16(this.PC + 1);			
-				// let val = this.memory.read(data);					
-				let val = this.memory.read(0xFFFF & (addr + this.Y));	
-				instruction += ` $${this.prettyHex(addr)},Y @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;			
-			}
-
-			if (this.currentOpcode.addr_mode == AddressingModes.modeIndirect) {
-				let addr = this.memory.read16(this.PC + 1);
-				let val = addr;
-
-				instruction += ` ($${this.prettyHex(addr)}) = ${this.prettyHex(data)}`;
-			}			
-
-			if (this.currentOpcode.addr_mode == AddressingModes.modeZeroPageX) {
-				let addr = this.memory.read(this.PC + 1);
-				let addrStr = addr.toString(16).toUpperCase().padStart(2, '0');
-				let finalAddr = (addr+this.X) & 0xFF;
-				let finalAddrStr = finalAddr.toString(16).toUpperCase().padStart(2, '0');
-
-				instruction += ` $${addrStr},X @ ${finalAddrStr}`;			
-				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');			
-			}
-
-			if (this.currentOpcode.addr_mode == AddressingModes.modeZeroPageY) {
-				let addr = this.memory.read(this.PC + 1);
-				let addrStr = addr.toString(16).toUpperCase().padStart(2, '0');
-				let finalAddr = (addr+this.Y) & 0xFF;
-				let finalAddrStr = finalAddr.toString(16).toUpperCase().padStart(2, '0');
-
-				instruction += ` $${addrStr},Y @ ${finalAddrStr}`;			
-				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');			
-			}
-
-			if (this.currentOpcode.addr_mode == AddressingModes.modeIndirectIndexed) {
-				let addr = this.memory.read(this.PC + 1);
-				
-				let addrStr = this.prettyHex(addr, 2);
-				let val = this.memory.read16bug((this.memory.read(this.PC + 1) & 0xFF));
-				
-				instruction += ` ($${addrStr}),Y`;
-				instruction += ' = ' + (val).toString(16).toUpperCase().padStart(4, '0');			
-				instruction += ' @ ' + data.toString(16).toUpperCase().padStart(4, '0');			
-				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');						
-			}
-
-			if (this.currentOpcode.addr_mode == AddressingModes.modeIndexedIndirect) {
-				let addr = this.memory.read(this.PC + 1);
-
-				let addrStr = addr.toString(16).toUpperCase().padStart(2, '0');
-				let finalAddr = (addr+this.X) & 0xFF;
-				let finalAddrStr = finalAddr.toString(16).toUpperCase().padStart(2, '0');
-
-				instruction += ` ($${addrStr},X) @ ${finalAddrStr}`;
-				instruction += ' = ' + data.toString(16).toUpperCase().padStart(4, '0');			
-				instruction += ' = ' + this.memory.read(data).toString(16).toUpperCase().padStart(2, '0');			
-			}
-		}
-
-		output.push(instruction);
-		output.push('A:' + this.A.toString(16).toUpperCase().padStart(2, '0'));
-		output.push('X:' + this.X.toString(16).toUpperCase().padStart(2, '0'));
-		output.push('Y:' + this.Y.toString(16).toUpperCase().padStart(2, '0'));
-		output.push('P:' + this.P.toString(16).toUpperCase().padStart(2, '0'));
-		output.push('SP:' + this.SP.toString(16).toUpperCase().padStart(2, '0'));		
-		// output.push(`PPU:${this.PPUCNT1.toString().padStart(2, ' ')},${this.PPUCNT2.toString().padStart(2, ' ')}`);
-		output.push('CYC:' + this.cycles);
-		this.debugOpcode = output.join(' ');		
-	}
-
 	nmi() {
 		this.push16(this.PC);
 		this.PHP(0);
@@ -617,25 +432,208 @@ export class CPU {
 			this.interrupt = Interrupt.None;
 		}		
 
-		this.decode();
-		this.decodeDebug(); // todo: uncomment after testing
+		this.opcodeIndex = this.memory.read(this.PC);
+		let opcode = opcodes[this.opcodeIndex];		
+		let opcodeData: OpData;
 
-		let opcode = this.currentOpcode;
-		let data = this.currentData;
+		switch(opcode.addr_mode) {
+		case 1:
+			opcodeData = this.memory.read16(this.PC + 1);
+			break;
+		case 2:
+			opcodeData = 0xFFFF & (this.memory.read16(this.PC+1) + this.X);
 
-		// console.log('after ', opcode.name, '->', this.cycles, '->', this.cycles + opcode.cycles);
-		// this.PC += opcode.size;
-		// let cyclesWasted = opcode.cycles + this.cyclesToAdd;
+			if (this.pagesDiffer((opcodeData-this.X) & 0xFFFF, opcodeData))
+				this.cyclesToAdd += opcode.page_cost;
+
+			break;
+		case 3:
+			opcodeData = 0xFFFF & (this.memory.read16(this.PC+1) + this.Y);
+
+			if (this.pagesDiffer((opcodeData-this.Y) & 0xFFFF, opcodeData))
+				this.cyclesToAdd += opcode.page_cost;
+
+			break;
+		case 4:
+			
+			break;
+		case 5:
+			opcodeData = this.PC + 1;
+			break;
+		case 6:
+			
+			break;
+		case 7:
+			opcodeData = this.memory.read16bug(0xFF & (this.memory.read(this.PC + 1) + this.X));
+			break;
+		case 8:
+			opcodeData = this.memory.read16bug(this.memory.read16(this.PC + 1));
+			break;
+		case 9:
+			opcodeData = this.memory.read16bug(0xFF & (this.memory.read(this.PC + 1) & 0xFF)) + this.Y;
+			opcodeData &= 0xFFFF;				
+
+			if (this.pagesDiffer((opcodeData-this.Y) & 0xFFFF, opcodeData))
+				this.cyclesToAdd += opcode.page_cost;
+
+			break;
+		case 10:
+			let offset = this.memory.read(this.PC + 1);
+			if (offset < 0x80) {
+				opcodeData = offset + this.PC + 2;
+			} else {
+				opcodeData = offset + this.PC + 2 - 0x100;
+			}
+
+			break;
+		case 11:
+			opcodeData = 0xFF & this.memory.read(this.PC + 1);
+			break;
+		case 12:
+			opcodeData = 0xFF & this.memory.read(this.PC + 1) + this.X;
+			break;
+		case 13:
+			opcodeData = 0xFF & this.memory.read(this.PC + 1) + this.Y;
+			break;
+	}
+		
+		this.currentData = opcodeData;
+		this.currentOpcode = opcode;		
+		let data = opcodeData;
+
+
+		if (false) { // todo: make this code be based on testing flag which should be set in each test file yadda yadda
+			// throw new Error('This function has side effects and it costs you hours!!!!!');
+			
+			let data: OpData = this.currentData;
+			// todo: maybe addresser should just return memory read instead of this case
+			if (this.currentOpcode.addr_mode == AddressingModes.modeImmediate)
+				data = this.memory.read(this.currentData, true);
+
+			let prefix = AddressDecodersPrefix[this.currentOpcode.addr_mode];
+		
+			let output: string[] = [];		
+			output.push(this.PC.toString(16).toUpperCase().padStart(4, '0'));		
+
+			let _data = [];
+			for (let i = 0; i < this.currentOpcode.size; i++)
+				_data.push(this.memory.read(this.PC + i, true).toString(16).toUpperCase().padStart(2, '0'));		
+
+			output.push(_data.join(' '));
+
+			let instruction = this.currentOpcode.name;
+			
+			// display the data of opcode
+			if (!this.currentOpcode.noData &&
+				this.currentOpcode.addr_mode != AddressingModes.modeIndexedIndirect &&
+				this.currentOpcode.addr_mode != AddressingModes.modeIndirectIndexed &&
+				this.currentOpcode.addr_mode != AddressingModes.modeIndirect &&
+				this.currentOpcode.addr_mode != AddressingModes.modeAbsoluteX &&
+				this.currentOpcode.addr_mode != AddressingModes.modeAbsoluteY &&
+				this.currentOpcode.addr_mode != AddressingModes.modeZeroPageX &&
+				this.currentOpcode.addr_mode != AddressingModes.modeZeroPageY) {
+				let size = 2;
+				if (this.currentOpcode.addr_mode == AddressingModes.modeAbsolute)
+					size = 4;
+
+				instruction += ' '+ prefix + data.toString(16).toUpperCase().padStart(size, '0');
+			}
+			
+			
+			if (!this.currentOpcode.noData) {
+				if (this.currentOpcode.showMemValue) {
+					console.log("Reading from ", data.toString(16), this.memory.read(data, true));
+					instruction += ' = ' + this.memory.read(data, true).toString(16).toUpperCase().padStart(2, '0');			
+				}
+
+				if (this.currentOpcode.addr_mode == AddressingModes.modeAbsolute) {
+					
+				}
+
+				if (this.currentOpcode.addr_mode == AddressingModes.modeZeroPage) {
+					
+				}
+
+				if (this.currentOpcode.addr_mode == AddressingModes.modeAbsoluteX) {
+					let addr = this.memory.read16(this.PC + 1, true);
+					let val = this.memory.read(0xFFFF & (addr + this.X), true);
+					instruction += ` $${this.prettyHex(addr)},X @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;
+				}
+
+				if (this.currentOpcode.addr_mode == AddressingModes.modeAbsoluteY) {
+					let addr = this.memory.read16(this.PC + 1, true);							
+					let val = this.memory.read(0xFFFF & (addr + this.Y), true);	
+					instruction += ` $${this.prettyHex(addr)},Y @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;			
+				}
+
+				if (this.currentOpcode.addr_mode == AddressingModes.modeIndirect) {
+					let addr = this.memory.read16(this.PC + 1, true);
+					let val = addr;
+
+					instruction += ` ($${this.prettyHex(addr)}) = ${this.prettyHex(data)}`;
+				}			
+
+				if (this.currentOpcode.addr_mode == AddressingModes.modeZeroPageX) {
+					let addr = this.memory.read(this.PC + 1, true);
+					let addrStr = addr.toString(16).toUpperCase().padStart(2, '0');
+					let finalAddr = (addr+this.X) & 0xFF;
+					let finalAddrStr = finalAddr.toString(16).toUpperCase().padStart(2, '0');
+
+					instruction += ` $${addrStr},X @ ${finalAddrStr}`;			
+					instruction += ' = ' + this.memory.read(data, true).toString(16).toUpperCase().padStart(2, '0');			
+				}
+
+				if (this.currentOpcode.addr_mode == AddressingModes.modeZeroPageY) {
+					let addr = this.memory.read(this.PC + 1, true);
+					let addrStr = addr.toString(16).toUpperCase().padStart(2, '0');
+					let finalAddr = (addr+this.Y) & 0xFF;
+					let finalAddrStr = finalAddr.toString(16).toUpperCase().padStart(2, '0');
+
+					instruction += ` $${addrStr},Y @ ${finalAddrStr}`;			
+					instruction += ' = ' + this.memory.read(data, true).toString(16).toUpperCase().padStart(2, '0');			
+				}
+
+				if (this.currentOpcode.addr_mode == AddressingModes.modeIndirectIndexed) {
+					let addr = this.memory.read(this.PC + 1, true);
+					
+					let addrStr = this.prettyHex(addr, 2);
+					let val = this.memory.read16bug((this.memory.read(this.PC + 1, true) & 0xFF), true);
+					
+					instruction += ` ($${addrStr}),Y`;
+					instruction += ' = ' + (val).toString(16).toUpperCase().padStart(4, '0');			
+					instruction += ' @ ' + data.toString(16).toUpperCase().padStart(4, '0');			
+					instruction += ' = ' + this.memory.read(data, true).toString(16).toUpperCase().padStart(2, '0');						
+				}
+
+				if (this.currentOpcode.addr_mode == AddressingModes.modeIndexedIndirect) {
+					let addr = this.memory.read(this.PC + 1, true);
+
+					let addrStr = addr.toString(16).toUpperCase().padStart(2, '0');
+					let finalAddr = (addr+this.X) & 0xFF;
+					let finalAddrStr = finalAddr.toString(16).toUpperCase().padStart(2, '0');
+
+					instruction += ` ($${addrStr},X) @ ${finalAddrStr}`;
+					instruction += ' = ' + data.toString(16).toUpperCase().padStart(4, '0');			
+					instruction += ' = ' + this.memory.read(data, true).toString(16).toUpperCase().padStart(2, '0');			
+				}
+			}
+
+			output.push(instruction);
+			output.push('A:' + this.A.toString(16).toUpperCase().padStart(2, '0'));
+			output.push('X:' + this.X.toString(16).toUpperCase().padStart(2, '0'));
+			output.push('Y:' + this.Y.toString(16).toUpperCase().padStart(2, '0'));
+			output.push('P:' + this.P.toString(16).toUpperCase().padStart(2, '0'));
+			output.push('SP:' + this.SP.toString(16).toUpperCase().padStart(2, '0'));		
+			// output.push(`PPU:${this.PPUCNT1.toString().padStart(2, ' ')},${this.PPUCNT2.toString().padStart(2, ' ')}`);
+			output.push('CYC:' + this.cycles);
+			this.debugOpcode = output.join(' ');	
+		}
+		
+
 		let cyclesWasted = this.cyclesToAdd;		
 		
-		// opcode.op(this, data);
-		/////////////////////
-		/////////////////////
-		/////////////////////
-		/////////////////////
-		
-		switch (this.opcodeIndex) {
-			case 0:
+switch (this.opcodeIndex) {
+case 0:
 	cyclesWasted += 7;
 	this.PC += 1;
 	this.BRK(data);
@@ -1930,7 +1928,6 @@ case 255:
     }
 
 	triggerNMI(): void {
-		if (this.interrupt == Interrupt.NMI) console.log('was nmi in queue')
 		this.interrupt = Interrupt.NMI;
 	}
 

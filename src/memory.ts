@@ -14,13 +14,13 @@ export class Memory {
             this.memory[i] = 0xFF;        
     }
 
-    read(addr: number) {                
+    read(addr: number, poke: boolean = false) {
         // zero page? it's also mirrored twice: 0...0x7FF 0x800..0xFFF
         if (addr < 0x2000) {            
             return this.ram[ addr % 0x800 ] & 0xFF;
         } else if (addr < 0x4000 || addr == 0x4014) {
             // ppu            
-            return this.nes.getPPU().read(addr);
+            return this.nes.getPPU().read(addr, poke);
         } else if (addr == 0x4015) {
             // apu            
             return this.memory[ addr ] & 0xFF;
@@ -35,19 +35,19 @@ export class Memory {
         }
     }
 
-    read16bug(addr: number) {        
+    read16bug(addr: number, poke: boolean = false) {        
         let _addr:number = (addr & 0xFF00) | (0xFF & ((addr & 0xFF) + 1));
 
-        let low =  this.read(addr) & 0xFF;
-        let high = this.read(_addr) & 0xFF;        
+        let low =  this.read(addr, poke) & 0xFF;
+        let high = this.read(_addr, poke) & 0xFF;        
 
         let finalAddr: number = (high << 8) | low;
         return finalAddr;
     }
 
-    read16(addr: number) {
-        let low =  this.read(addr);
-        let high = this.read(addr+1);
+    read16(addr: number, poke: boolean = false) {
+        let low =  this.read(addr, poke);
+        let high = this.read(addr+1, poke);
         return (high << 8) | low;
     }
 
@@ -77,7 +77,7 @@ export class Memory {
         let data: string[] = [];
 
         for(let i = from; i <= to; i++) {
-            data.push(i.toString(16).toUpperCase().padStart(4, '0') +" " +this.read(i).toString(16).toUpperCase().padStart(2, '0'));                        
+            data.push(i.toString(16).toUpperCase().padStart(4, '0') +" " +this.read(i, true).toString(16).toUpperCase().padStart(2, '0'));                        
         }   
                 
         output = data;

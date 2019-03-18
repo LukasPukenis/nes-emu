@@ -182,14 +182,26 @@ export class PPU {
         }
     }
 
-    readStatus(): number {
-        let result: number = 0;
+    readStatus(poke: boolean): number {
 
-        if (this.nmiOccurred) {
+        let result: number = this.register & 0x1F;
+        
+        if (this.flagOverflow)
+            result |= 1 << 5;
+        
+        if (this.flagZeroHit)
+            result |= 1 << 6;
+        
+        if (this.v_blank)// || Math.random() > 0.5)
             result |= 1 << 7;
+        
+        if (!poke) {
+            this.v_blank = false;
+            this.writeToggle = true; // todo: check if correct
         }
 
-        this.nmiOccurred = false;
+        this.nmiChange();
+        
         return result;
     }    
 
@@ -211,23 +223,23 @@ export class PPU {
         }
     }
 
-    read(addr: number): number {
+    read(addr: number, poke: boolean = false): number {
         if (addr == 0x2000) {
-            return this.readControl(addr);
+            return this.readControl(addr, poke);
         } else if (addr == 0x2002) {
-            return this.readStatus();
+            return this.readStatus(poke);
         } else if (addr == 0x2001) {
-            return this.readMask(addr);
+            return this.readMask(addr, poke);
         } else if (addr == 0x2003) {
-            return this.readOAMAddress(addr);
+            return this.readOAMAddress(addr, poke);
         } else if (addr == 0x2004) {
-            return this.readOAMData(addr);
+            return this.readOAMData(addr, poke);
         } else if (addr == 0x2006) {
-            return this.readAddress(addr);
+            return this.readAddress(addr, poke);
         } else if (addr == 0x2007) {
-            return this.readFromAddress();
+            return this.readFromAddress(poke);
         } else if (addr == 0x4014) {
-            return this.readDMA(addr);
+            return this.readDMA(addr, poke);
         }
     }
 
@@ -236,7 +248,7 @@ export class PPU {
         this.address += 1; // + 32 if some flag is set
     }
 
-    readFromAddress(): number {
+    readFromAddress(poke: boolean): number {
         let t = this.vram[this.address];
 
         if (this.address <= 0x3EFF) {
@@ -309,27 +321,27 @@ export class PPU {
         this.nes.getCPU().setStall(stall);
     }
 
-    readAddress(value: number): number {
+    readAddress(value: number, poke: boolean): number {
         return 1;
     }
 
-    readControl(value: number): number {
+    readControl(value: number, poke: boolean): number {
         return 1;
     }
     
-    readMask(value: number): number {
+    readMask(value: number, poke: boolean): number {
         return 1;
     }
 
-    readOAMAddress(value: number): number {
+    readOAMAddress(value: number, poke: boolean): number {
         return this.oamAddress;
     }
 
-    readOAMData(value: number): number {
+    readOAMData(value: number, poke: boolean): number {
         return this.oamData[value];
     }
 
-    readDMA(value: number): number {
+    readDMA(value: number, poke: boolean): number {
         return 1;
     }
 }
