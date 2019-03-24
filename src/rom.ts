@@ -39,8 +39,8 @@ export class ROM {
         if (!this.validate(this.data))
             return false;        
 
-        let prgRomCnt = this.data[5];
-        let chrRomCnt = this.data[6];
+        let prgRomCnt = this.data[4];
+        let chrRomCnt = this.data[5]; // Value 0 means the board uses CHR RAM)
         
         for (let i = 0; i < prgRomCnt; i++)            
             this.prgroms.push(this.data.slice(16 + i*0x4000, (i+1)*0x4000+16));
