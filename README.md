@@ -6,3 +6,9 @@ which is Macbook Air 2016, takes around 7 seconds to finish parsing the whole lo
 more but it's really quick enough. So once I implemented the test I would just give it a spin, see which command fails then
 go implement/fix that command. Later on I encountered performance issue and this automated test proved itself worthy yet again when
 I refactored a lot of CPU code.
+
+
+----------- TODO --------------
+[ ] - add official rom tests just add to gitignore to avoid legal issues
+[ ] - Check all the info - PRGROM and CHRROM as this caused major headache
+[ ] - given a test input sequence with timings(based on cpu cycles executed) compare CPU and PPU data
