@@ -24,12 +24,10 @@ export class Memory {
         } else if (addr == 0x4015) {
             // apu            
             return this.memory[ addr ] & 0xFF;
-        } else if (addr == 0x4016) {
-            // joystick 1            
-            return this.memory[ addr ] & 0xFF;
+        } else if (addr == 0x4016) { 
+            return this.nes.getController1().read();
         } else if (addr == 0x4017) {
-            // joystick 2            
-            return this.memory[ addr ] & 0xFF;
+            return this.nes.getController2().read();
         } else {
             return this.memory[ addr ] & 0xFF;
         }
@@ -64,11 +62,9 @@ export class Memory {
             // apu
             this.memory[ addr ] = value & 0xFF;
         } else if (addr == 0x4016) {
-            // joystick 1
-            this.memory[ addr ] = value & 0xFF;
+            this.nes.getController1().write(value);
         } else if (addr == 0x4017) {
-            // joystick 2
-            this.memory[ addr ] = value & 0xFF;
+            this.nes.getController2().write(value);
         } else {
             this.memory[ addr ] = value;
         }
