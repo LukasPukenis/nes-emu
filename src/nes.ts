@@ -4,6 +4,7 @@ import { PPU } from './ppu';
 import { Memory } from './memory';
 import { Mapper } from './mappers/mapper';
 import { Mapper0 } from './mappers/mapper0';
+import { Controller } from './controller';
 
 
 export class NES {
@@ -12,11 +13,17 @@ export class NES {
     private memory: Memory;
     private rom: ROM;
     private mapper: Mapper;
+    private controller1: Controller;
+    private controller2: Controller;
+
     private lastTime: number = 0;
     
     constructor(canvas: HTMLCanvasElement) {
         console.assert(canvas);
 
+        this.controller1 = new Controller();
+        this.controller2 = new Controller();
+        
         this.rom = new ROM();
         this.memory = new Memory(this);        
         this.ppu = new PPU(this, canvas && canvas.getContext('2d'));
@@ -32,6 +39,14 @@ export class NES {
         console.log('loaded!');
     }
 
+    getController1() {
+        return this.controller1;
+    }
+    
+    getController2() {
+        return this.controller2;
+    }
+    
     getPPU(): PPU {
         return this.ppu;
     }

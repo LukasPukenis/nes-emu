@@ -114,46 +114,42 @@ export class PPU {
         }
     }
 
-    render() {
-        // @ts-ignore
-        // if (!window.render) return;
-
-        // 1) nametable byte
-        // 2) data from chrom
-        // 3) pixels
-        // 4) putImageData
-
-        for (let i = 0; i < 256*240*4; i++) {
-            // this.pixels[i] = Math.random()*0xFF;
-        }
-        
-        let d = [];
-
+    directRenderBG() {
         for (let j = 0; j < 30; j++) {
             for (let i = 0; i < 32; i++) {
                 let pixelIdx = (j*256*8 + i*8) * 4 ;                
                 
-                let index = 0x2000 + (j << 5) + i; // todo proper starting address
-                
-                // d.push(index);
+                let index = 0x2000 + (j << 5) + i; // todo proper starting address                
+                let nametable = this.read(index) + 0x100; // todo: why add 0x100                
 
-                let nametable = this.read(index) + 0x100;
-                
-                // nametable = 0xD3 * 16;
-                // nametable = 0xD1;
-
-                // console.log("====");
                 for (let n = 0; n < 8; n++) {
-                    // if (nametable == 0xD3) debugger;
                     let line0 = this.read((nametable*16)+n + 0);
                     let line1 = this.read((nametable*16)+n + 8);
 
                     for (let m = 0; m < 8; m++) {
                         let reduct = 7 - m;
                         let val0 = (line0 >> reduct) & 1;
-                        let val1 = (line1 >> reduct) & 1;
-                        let finalVal = val0 + val1;
+                        let val1 = (line1 >> reduct) & 1;                        
+                        let finalVal = val0 | (val1 << 1);
+                                            
+                        let palletteByte = this.read(0x23C0 + (j % 2 * 32) + (i % 2));
+                        let bits = 0;
+
+                        if (i % 2 == 0 && j % 2 == 0) {
+                            // top left corner case
+                            bits = (palletteByte >> 0 ) & 3;
+                        } else if (i % 2 == 1 && j % 2 == 0) {
+                            // top right corner case
+                            bits = (palletteByte >> 2 ) & 3;
+                        } else if (i % 2 == 0 && j % 2 == 1) {
+                            // bottom left corner case
+                            bits = (palletteByte >> 4 ) & 3;
+                        } else if (i % 2 == 1 && j % 2 == 1) {
+                            // bottom right corner case
+                            bits = (palletteByte >> 6 ) & 3;
+                        }
                         
+
                         let pixelOffset = (n * 256 + m) * 4;
                         let finalPixelIdx = pixelIdx + pixelOffset;
 
@@ -165,72 +161,52 @@ export class PPU {
                 }                
             }
         }
+    }
 
-        // console.log(d.length, '===', d);
-        // debugger;
-
-        this.canvas.putImageData(this.imageData, 0, 0);
-
-        // let idx = 0x1D3 * 16;
-        // let chrrom = nes.rom.getCHRROMS()[0];
-        // for (let i = 0; i < 16; i++) {
-        //    let v = chrrom[idx + i] & 0xFF;
-        //    console.log(i.toString().padStart(2, '0'), v.toString(2).padStart(8, '0'));
-        // }
-       
-
-        // function getSprite(index) {
-        //     let idx = index * 16;
-        //     let output1 = [];
-        //     let output2 = [];
+    directRenderSprites() {
+        const oam = this.oamData;
+        for (let i = 0; i < 64; i++) {
+            const idx = i*4;
+            const y = oam[idx + 0];
+            const sprite = oam[idx + 1];
             
-        //     let output = [];
-          
-        //     for (let i = 0; i < 8; i++) {
-        //         let byte1 = nes.ppu.vram[idx+i];  
-        //         let byte2 = nes.ppu.vram[idx+i+8];
+            const attr = oam[idx + 2];
+            const x = oam[idx + 3];
+            
+            // console.log(`sprite ${sprite} @ ${x}x${y}`);
+
+            const pixelIdx = (y*256 + x) * 4;
+
+            for (let n = 0; n < 8; n++) {
+                const line0 = this.read((sprite*16)+n + 0);
+                const line1 = this.read((sprite*16)+n + 8);
                 
-          
-        //         for (let j = 0; j < 8; j++) {
-        //             let bit0 = byte1 & 1;
-        //             let bit1 = byte2 & 1;
-        //             let finalByte = bit0 + bit1;
-        //             output.push(finalByte);
-        //             byte1 >>= 1;
-        //             byte2 >>= 1;
-        //         }
-        //     }
-          
-        //     return output;
-        //   }
-          
-        //   function printSprite(index) {
-        //   for (let i = 0; i < 256*240; i++) {
-        //     let idx = i*4;
-        //     nes.ppu.pixels[idx+0] = 0xFF;
-        //     nes.ppu.pixels[idx+1] = 0x0;
-        //     nes.ppu.pixels[idx+2] = 0x0;
-        //     nes.ppu.pixels[idx+3] = 0xFF;
-        //   }
-          
-          
-        //       let data = getSprite(index);
-              
-        //       for (let i = 0; i < 8; i++) {
-        //           for (let j = 0; j < 8; j++) {
-        //               let pidx = i * 8 + j;
-        //               let idx = (i * 256+ + j) * 4;
-        //               nes.ppu.pixels[idx + 0] = data[pidx] * 50;
-        //               nes.ppu.pixels[idx + 1] = data[pidx] * 50;
-        //               nes.ppu.pixels[idx + 2] = data[pidx] * 50;
-        //               nes.ppu.pixels[idx + 3] = data[pidx] * 0xFF;
-        //           }        
-        //       }
-          
-        //       nes.ppu.canvas.putImageData(nes.ppu.imageData, 0, 0);
-        //   }
-          
-          
+                for (let m = 0; m < 8; m++) {
+                    const reduct = 7 - m;
+                    const val0 = (line0 >> reduct) & 1;
+                    const val1 = (line1 >> reduct) & 1;
+                    const finalVal = val0 | (val1 << 1);
+                    
+                    const pixelOffset = (n * 256 + m) * 4;
+                    const finalPixelIdx = pixelIdx + pixelOffset;
+
+                    this.pixels[finalPixelIdx + 0] = finalVal * 50;
+                    this.pixels[finalPixelIdx + 1] = finalVal * 50;
+                    this.pixels[finalPixelIdx + 2] = finalVal * 50;
+                    this.pixels[finalPixelIdx + 3] = 0xff;
+                }
+            }        
+        }
+    }
+
+    directRender() {
+        this.directRenderBG();
+        this.directRenderSprites();
+    }
+
+    render() {
+        this.directRender();
+        this.canvas.putImageData(this.imageData, 0, 0);          
     }
 
     step() {
@@ -331,7 +307,7 @@ export class PPU {
     }
 
     writeToAddress(value: number): void {        
-        console.log(this.address.toString(16), '->', value.toString(16));
+        // console.log(this.address.toString(16), '->', value.toString(16));
         
         this.vram[this.address] = value & 0xFF;        
         this.address += this.controlIncrement ? 32 : 1;
