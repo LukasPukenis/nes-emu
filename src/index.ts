@@ -2,13 +2,17 @@ import { NES } from './nes';
 import { BUTTON, BUTTONS } from './controller';
 
 console.log('yey')
-// const path = './roms/official/DonkeyKong.nes';
-const path = './roms/official/BalloonFight.nes';
+const path = './roms/official/DonkeyKong.nes';
+// const path = './roms/official/BalloonFight.nes';
+// const path = './roms/official/LodeRunner.nes';
+
 // const path = './roms/bkg.nes';
 // // const path = './roms/ppu/01-vbl_basics.nes';
 // // const path = './roms/nestest.nes';
 
-let nes = new NES(document.getElementById('canvas') as HTMLCanvasElement);
+let nes = new NES(
+    document.getElementById('canvas') as HTMLCanvasElement,
+    document.getElementById('spritesDebugCanvas') as HTMLCanvasElement);
 
 let buttons: BUTTONS = {};
 buttons[BUTTON.A] = false;

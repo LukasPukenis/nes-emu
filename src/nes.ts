@@ -18,7 +18,13 @@ export class NES {
 
     private lastTime: number = 0;
     
-    constructor(canvas: HTMLCanvasElement) {
+    constructor(canvas: HTMLCanvasElement, debugCanvas: HTMLCanvasElement = null) {
+        setTimeout(() => {
+            console.log("FINISHD");
+            // @ts-ignore
+            window.finish = true;
+        }, 30000);
+
         console.assert(canvas);
 
         this.controller1 = new Controller();
@@ -26,7 +32,7 @@ export class NES {
         
         this.rom = new ROM();
         this.memory = new Memory(this);        
-        this.ppu = new PPU(this, canvas && canvas.getContext('2d'));
+        this.ppu = new PPU(this, canvas && canvas.getContext('2d'), debugCanvas && debugCanvas.getContext('2d'));
         this.cpu = new CPU(this);
 
         this.mapper = new Mapper0(this.rom, this.cpu, this.ppu);

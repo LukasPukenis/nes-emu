@@ -1,5 +1,6 @@
 import { NES } from "./nes";
 import { CPU } from "./cpu";
+import { Utils } from "./utils";
 
 /**
  * Abbreviations used:
@@ -40,18 +41,18 @@ export class PPU {
     attributeTableByte: number = 0;
     nameTableByte: number = 0;
 
-    maskShowLeftBG: boolean;
-    maskShowLeftSprites: boolean;
-    maskGrayscale: boolean;
-    maskShowBG: boolean = false;
-    maskShowSprites: boolean = false;
+    maskShowLeftBG: number;
+    maskShowLeftSprites: number;
+    maskGrayscale: number;
+    maskShowBG: number;
+    maskShowSprites: number;
 
-    controlIncrement: boolean;// 0: add 1; 1: add 32
+    controlIncrement: number;// 0: add 1; 1: add 32
     controlNameTable: number;// 0: $2000; 1: $2400; 2: $2800; 3: $2C00
-    controlSpriteTable: boolean;// 0: $0000; 1: $1000; ignored in 8x16 mode
-    controlBackgroundTable: boolean;// 0: $0000; 1: $1000
-    controlSpriteSize: boolean;// 0: 8x8; 1: 8x16
-    controlMasterSlave: boolean;// 0: read EXT; 1: write EXT
+    controlSpriteTable: number;// 0: $0000; 1: $1000; ignored in 8x16 mode
+    controlBackgroundTable: number;// 0: $0000; 1: $1000
+    controlSpriteSize: number;// 0: 8x8; 1: 8x16
+    controlMasterSlave: number;// 0: read EXT; 1: write EXT
 
     generateNMI: boolean = true;
     oamData: number[] = [];
@@ -59,15 +60,28 @@ export class PPU {
     v_blank: boolean = true;
 
     canvas: CanvasRenderingContext2D;
+    debugCanvas: CanvasRenderingContext2D;
+    
     imageData: ImageData;
+    debugImageData: ImageData;
+
     pixels: Uint8ClampedArray;
+    debugPixels: Uint8ClampedArray;
+
     debugInfo: string[] = [];
 
-    constructor(nes: NES, canvas: CanvasRenderingContext2D) {    
+    constructor(nes: NES, canvas: CanvasRenderingContext2D, debugCanvas: CanvasRenderingContext2D) {
         this.canvas = canvas;
+        this.debugCanvas = debugCanvas;
+
         if (this.canvas) {
             this.imageData = this.canvas.createImageData(256, 240);
             this.pixels = this.imageData.data;
+        }
+
+        if (this.debugCanvas) {
+            this.debugImageData = this.debugCanvas.createImageData(256*2, 240);
+            this.debugPixels = this.debugImageData.data;
         }
 
         this.nes = nes;
@@ -115,16 +129,38 @@ export class PPU {
     }
 
     directRenderBG() {
+        let baseNameTable: number;
+        switch(this.controlNameTable) {
+            case 0:
+                baseNameTable = 0x2000; break;
+            case 1:
+                baseNameTable = 0x2400; break;
+            case 2:
+                baseNameTable = 0x2800; break;
+            case 3:
+                baseNameTable = 0x2C00; break
+        }
+
+        let backgroundBase: number;
+        switch (this.controlBackgroundTable) {
+            case 0: 
+                backgroundBase = 0x0000; break;
+            case 1:
+                backgroundBase = 0x1000; break;
+        }
+
         for (let j = 0; j < 30; j++) {
             for (let i = 0; i < 32; i++) {
-                let pixelIdx = (j*256*8 + i*8) * 4 ;                
+                let pixelIdx = (j*256*8 + i*8) * 4 ;                                                
+
+                // todo: backgroundbase neklauso, reik rankom pridet 0x100
+                let index = baseNameTable + (j << 5) + i;
                 
-                let index = 0x2000 + (j << 5) + i; // todo proper starting address                
-                let nametable = this.read(index) + 0x100; // todo: why add 0x100                
+                let spriteIndex = this.read(index);
 
                 for (let n = 0; n < 8; n++) {
-                    let line0 = this.read((nametable*16)+n + 0);
-                    let line1 = this.read((nametable*16)+n + 8);
+                    let line0 = this.read(backgroundBase+(spriteIndex*16)+n + 0);
+                    let line1 = this.read(backgroundBase+(spriteIndex*16)+n + 8);
 
                     for (let m = 0; m < 8; m++) {
                         let reduct = 7 - m;
@@ -164,11 +200,39 @@ export class PPU {
     }
 
     directRenderSprites() {
+        let baseNameTable: number;
+        switch(this.controlNameTable) {
+            case 0:
+                baseNameTable = 0x2000; break;
+            case 1:
+                baseNameTable = 0x2400; break;
+            case 2:
+                baseNameTable = 0x2800; break;
+            case 3:
+                baseNameTable = 0x2C00; break
+        }
+
+        let backgroundBase: number;
+        switch (this.controlBackgroundTable) {
+            case 0: 
+                backgroundBase = 0x0000; break;
+            case 1:
+                backgroundBase = 0x1000; break;
+        }
+
+        let spriteBase: number;
+        switch (this.controlSpriteTable) {
+            case 0: 
+                spriteBase = 0x0000; break;
+            case 1:
+                spriteBase = 0x1000; break;
+        }
+
         const oam = this.oamData;
         for (let i = 0; i < 64; i++) {
             const idx = i*4;
             const y = oam[idx + 0];
-            const sprite = oam[idx + 1];
+            const sprite = spriteBase + oam[idx + 1];
             
             const attr = oam[idx + 2];
             const x = oam[idx + 3];
@@ -204,9 +268,74 @@ export class PPU {
         this.directRenderSprites();
     }
 
+    /**
+     * Sprites live at 0x0000 and 0x1000 addresses. Each sprite occupies 16 bytes
+     * Each 16 bytes is actually two halfs of 8bytes, they must be combined to produce the final colour index
+     */
+    debugRenderSprites() {
+        let backgroundBase: number;
+        
+        for (let spriteIndex = 0; spriteIndex < 256; spriteIndex++) {
+            const y = Math.trunc(spriteIndex / 16);
+            const x = spriteIndex % 16;
+            // debug canvas is double the size, each pixel occupies 4 bytes, 8x8 is sprite size
+            const pixelIdx = (y*256*2 + x) * 4 * 8;
+
+            for (let n = 0; n < 8; n++) {
+                const line0 = this.read((spriteIndex*16)+n + 0, true);
+                const line1 = this.read((spriteIndex*16)+n + 8, true);
+
+                for (let m = 0; m < 8; m++) {
+                    const reduct = 7 - m;
+                    const val0 = (line0 >> reduct) & 1;
+                    const val1 = (line1 >> reduct) & 1;                        
+                    const finalVal = val0 | (val1 << 1);
+                                                                
+                    const pixelOffset = (n * 256*2 + m) * 4;
+                    let finalPixelIdx = pixelIdx + pixelOffset;
+
+                    this.debugPixels[finalPixelIdx + 0] = finalVal * 50;
+                    this.debugPixels[finalPixelIdx + 1] = finalVal * 50;
+                    this.debugPixels[finalPixelIdx + 2] = finalVal * 50;
+                    this.debugPixels[finalPixelIdx + 3] = 0xff;                        
+                }                    
+            }
+        }
+        
+        for (let spriteIndex = 0; spriteIndex < 256; spriteIndex++) {
+            const y = Math.trunc(spriteIndex / 16);
+            const x = spriteIndex % 16;
+            // debug canvas is double the size, each pixel occupies 4 bytes, 8x8 is sprite size
+            const pixelIdx = (y*256*2 + x) * 4 * 8 + 16*8*4;
+
+            for (let n = 0; n < 8; n++) {
+                const line0 = this.read((0x1000+spriteIndex*16)+n + 0, true);
+                const line1 = this.read((0x1000+spriteIndex*16)+n + 8, true);
+
+                for (let m = 0; m < 8; m++) {
+                    const reduct = 7 - m;
+                    const val0 = (line0 >> reduct) & 1;
+                    const val1 = (line1 >> reduct) & 1;                        
+                    const finalVal = val0 | (val1 << 1);
+                                                                
+                    const pixelOffset = (n * 256*2 + m) * 4;
+                    let finalPixelIdx = pixelIdx + pixelOffset;
+
+                    this.debugPixels[finalPixelIdx + 0] = finalVal * 50;
+                    this.debugPixels[finalPixelIdx + 1] = finalVal * 50;
+                    this.debugPixels[finalPixelIdx + 2] = finalVal * 50;
+                    this.debugPixels[finalPixelIdx + 3] = 0xff;                        
+                }                    
+            }
+        }
+    }
+
     render() {
+        this.debugRenderSprites();
         this.directRender();
-        this.canvas.putImageData(this.imageData, 0, 0);          
+
+        this.canvas.putImageData(this.imageData, 0, 0);
+        this.debugCanvas.putImageData(this.debugImageData, 0, 0);
     }
 
     step() {
@@ -220,7 +349,7 @@ export class PPU {
         let preFetchCycle = this.cycle >= 321 && this.cycle <= 336;
         let visibleCycle = this.cycle >= 1 && this.cycle <= 256;
         let fetchCycle = preFetchCycle || visibleCycle;
-        let render: boolean = this.maskShowBG || this.maskShowSprites;                        
+        // let render: boolean = this.maskShowBG || this.maskShowSprites;                        
 
         if (this.scanLine == 241 && this.cycle == 1) {
             this.setVerticalBlank();
@@ -280,7 +409,7 @@ export class PPU {
 
     read(addr: number, poke: boolean = false): number {        
         if (addr < 0x2000) {
-            return this.nes.getMapper().read(addr);
+            return this.nes.getMapper().read(addr, poke);
         } else {
             return this.vram[addr];
         }
@@ -355,11 +484,13 @@ export class PPU {
         // console.log('write ctrl', value.toString(2));
 
         this.controlNameTable =   ((value >> 0) & 3);
-        this.controlIncrement =   ((value >> 2) & 1) == 1;
-        this.controlSpriteTable = ((value >> 3) & 1) == 1;
-        this.controlBackgroundTable = ((value >> 4) & 1) == 1;
-        this.controlSpriteSize =      ((value >> 5) & 1) == 1;
-        this.controlMasterSlave =     ((value >> 6) & 1) == 1         
+        this.controlIncrement =   ((value >> 2) & 1);
+        this.controlSpriteTable = ((value >> 3) & 1);
+        this.controlBackgroundTable = ((value >> 4) & 1);
+        console.log("====", this.controlBackgroundTable, this.frame);
+
+        this.controlSpriteSize =      ((value >> 5) & 1);
+        this.controlMasterSlave =     ((value >> 6) & 1);
         this.generateNMI =            ((value >> 7) & 1) == 1;
         
         this.nmiChange();
@@ -367,11 +498,11 @@ export class PPU {
     
     writeMask(value: number): void {
         // console.log('write mask', value.toString(2));
-        this.maskGrayscale = (value & 1) == 1;
-        this.maskShowBG = (value >> 3) == 1;
-        this.maskShowSprites = (value >> 4) == 1;
-        this.maskShowLeftBG = (value >> 1) == 1;
-        this.maskShowLeftSprites = (value >> 2) == 1;
+        this.maskGrayscale = (value & 1);
+        this.maskShowBG = (value >> 3);
+        this.maskShowSprites = (value >> 4);
+        this.maskShowLeftBG = (value >> 1);
+        this.maskShowLeftSprites = (value >> 2);
     }
 
     writeOAMAddress(value: number): void {
