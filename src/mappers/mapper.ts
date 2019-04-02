@@ -13,6 +13,6 @@ export abstract class Mapper {
         this.ppu = ppu;
     };
     abstract write(addr: number, val: number): void;
-    abstract read(add: number): number;
+    abstract read(add: number, poke: boolean): number;
     abstract step(): void;
 }

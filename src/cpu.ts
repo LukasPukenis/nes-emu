@@ -1,7 +1,6 @@
 import { Memory } from './memory';
 import { ROM } from './rom';
-import { cpus } from 'os';
-import { timingSafeEqual } from 'crypto';
+import { Utils } from './utils';
 import { PPU } from './ppu';
 import { NES } from './nes';
 
@@ -392,7 +391,7 @@ export class CPU {
 		else
 			this.PC = startingAddress;
 
-		console.log("Starting @ ", this.prettyHex(this.PC));
+		console.log("Starting @ ", Utils.prettyHex(this.PC));
 	}
 
 	pagesDiffer(a: number, b: number): boolean {
@@ -404,11 +403,7 @@ export class CPU {
 		if (this.pagesDiffer(a, b))
 			this.cycles++;		
 	}
-	
-	prettyHex(data: number, padStart = 4) {
-		return data.toString(16).toUpperCase().padStart(padStart, '0');
-	}
-	
+		
 	setStall(cycles: number) {
 		this.stallCycles = cycles;
 	}	
@@ -557,20 +552,20 @@ export class CPU {
 				if (this.currentOpcode.addr_mode == AddressingModes.modeAbsoluteX) {
 					let addr = this.memory.read16(this.PC + 1, true);
 					let val = this.memory.read(0xFFFF & (addr + this.X), true);
-					instruction += ` $${this.prettyHex(addr)},X @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;
+					instruction += ` $${Utils.prettyHex(addr)},X @ ${Utils.prettyHex(data)} = ${Utils.prettyHex(val, 2)}`;
 				}
 
 				if (this.currentOpcode.addr_mode == AddressingModes.modeAbsoluteY) {
 					let addr = this.memory.read16(this.PC + 1, true);							
 					let val = this.memory.read(0xFFFF & (addr + this.Y), true);	
-					instruction += ` $${this.prettyHex(addr)},Y @ ${this.prettyHex(data)} = ${this.prettyHex(val, 2)}`;			
+					instruction += ` $${Utils.prettyHex(addr)},Y @ ${Utils.prettyHex(data)} = ${Utils.prettyHex(val, 2)}`;			
 				}
 
 				if (this.currentOpcode.addr_mode == AddressingModes.modeIndirect) {
 					let addr = this.memory.read16(this.PC + 1, true);
 					let val = addr;
 
-					instruction += ` ($${this.prettyHex(addr)}) = ${this.prettyHex(data)}`;
+					instruction += ` ($${Utils.prettyHex(addr)}) = ${Utils.prettyHex(data)}`;
 				}			
 
 				if (this.currentOpcode.addr_mode == AddressingModes.modeZeroPageX) {
@@ -596,7 +591,7 @@ export class CPU {
 				if (this.currentOpcode.addr_mode == AddressingModes.modeIndirectIndexed) {
 					let addr = this.memory.read(this.PC + 1, true);
 					
-					let addrStr = this.prettyHex(addr, 2);
+					let addrStr = Utils.prettyHex(addr, 2);
 					let val = this.memory.read16bug((this.memory.read(this.PC + 1, true) & 0xFF), true);
 					
 					instruction += ` ($${addrStr}),Y`;
