@@ -1,11 +1,17 @@
-export function printhex(data: any, len: number = 10, offset: number = 0) {
-    let out = '';
-    for (let i = offset; i < len+offset; i++) {
-        let num = data[i];
-        out += (num >>> 0 & 0xFF).toString(16) + " ";
-    }
+const PRG_ROM_COUNT = 4;
+const CHR_ROM_COUNT = 5;
+const FLAG6 = 6;
 
-    console.log(out);    
+enum MIRROR_TYPES {
+    Horizontal,
+    Vertical,
+    None    // Ignore mirroring control or above mirroring bit; instead provide four-screen VRAM
+};
+
+class Header {
+    public prgRomCnt: number = 0;
+    public chrRomCnt: number = 0;
+    public mirror: number = 0;
 }
 
 export class ROM {
@@ -13,8 +19,9 @@ export class ROM {
     private data: Int8Array;
     private prgroms: any[] = [];
     private chrroms: any[] = [];
+    private header: Header; 
 
-    constructor() {        
+    constructor() {
     }
 
     async load(path: string) {
@@ -32,27 +39,34 @@ export class ROM {
 
     async parse() {
         let data = await fetch(this.path);
-        console.log(this.path);
         let parsedData = await data.arrayBuffer();
         this.data = new Int8Array(parsedData);
 
         if (!this.validate(this.data))
             return false;        
-
-        let prgRomCnt = this.data[4];
-        let chrRomCnt = this.data[5]; // Value 0 means the board uses CHR RAM)
         
-        for (let i = 0; i < prgRomCnt; i++)            
+        this.header = new Header();
+
+        this.header.prgRomCnt = this.data[PRG_ROM_COUNT];
+        this.header.chrRomCnt = this.data[CHR_ROM_COUNT];
+        this.header.mirror = this.data[FLAG6] & 1;
+
+        for (let i = 0; i < this.header.prgRomCnt; i++)            
             this.prgroms.push(this.data.slice(16 + i*0x4000, (i+1)*0x4000+16));
 
-        let chrOffset = prgRomCnt * 0x4000 + 16;
-        for (let i = 0; i < chrRomCnt; i++) {
+        let chrOffset = this.header.prgRomCnt * 0x4000 + 16;
+        for (let i = 0; i < this.header.chrRomCnt; i++) {
             this.chrroms.push(this.data.slice(chrOffset + i*0x2000, chrOffset + (i+1)*0x2000));
         }
 
-        console.log(`PRG ROMS: #${prgRomCnt}`);
-        console.log(`CHR ROMS: #${chrRomCnt}`);
+        console.log(`PRG ROMS: #${this.header.prgRomCnt}`);
+        console.log(`CHR ROMS: #${this.header.chrRomCnt}`);
+        
         return true;
+    }
+
+    getMirror(): number {
+        return this.header.mirror;
     }
 
     getPRGROMS() {
