@@ -7,10 +7,13 @@ import { Utils } from "./utils";
  * OAM - Object Attribute Memory, 64 entries, 4 bytes each
  */
 
+// todo: this is wrong, PPU reads from the cartridge and only from pallettes(32), nametables(2048) and OAM(256) all of which are
+const VRAM_SIZE = 0x8000;
 
 export class PPU {
     nes: NES;
     vram: Uint8Array;
+    mirrorTable: Uint16Array;
     writeToggle: boolean = false;
     address: number;
     tempAddrToWrite: number = 0;
@@ -85,9 +88,35 @@ export class PPU {
         }
 
         this.nes = nes;
-        this.vram = new Uint8Array(0x8000);
+        this.vram = new Uint8Array(VRAM_SIZE);
+        this.mirrorTable = new Uint16Array(VRAM_SIZE);
+
+        // prepopulate mirror with all the values
+        for (let i = 0; i < this.mirrorTable.length; i++)
+            this.mirrorTable[i] = i;
+
+        this.setMirror(0x3f20, 0x3f00, 0x20);
+        this.setMirror(0x3f40, 0x3f00, 0x20);
+        this.setMirror(0x3f80, 0x3f00, 0x20);
+        this.setMirror(0x3fc0, 0x3f00, 0x20);
+        this.setMirror(0x3000, 0x2000, 0xf00);
+        this.setMirror(0x4000, 0x0000, 0x4000);
+
+        if (this.nes.getROM().getMirror() == 0) {
+            this.setMirror(0x2800, 0x2000, 0x400);
+            this.setMirror(0x2c00, 0x2400, 0x400);
+        } else {
+            this.setMirror(0x2400, 0x2000, 0x400);
+            this.setMirror(0x2800, 0x2400, 0x400);
+        }
     }
     
+    // mirror table literally holds the address it's mirrored to
+    setMirror(from: number, to: number, size: number) {
+        for (let i = 0; i < size; i++)
+            this.mirrorTable[from+i] = to+i;
+    }
+
     nmiChange() {
         let nmi = this.generateNMI && this.v_blank;
 
@@ -436,16 +465,19 @@ export class PPU {
     }
 
     writeToAddress(value: number): void {        
+        // console.log("write", Utils.prettyHex(value), 'to', Utils.prettyHex(this.address));
+
         // console.log(this.address.toString(16), '->', value.toString(16));
-        
+        if (this.address >= 0x3000 && this.address <= 0x3EFF)
+            this.address -= 0x1000; 
         this.vram[this.address] = value & 0xFF;        
         this.address += this.controlIncrement ? 32 : 1;
     }
 
     readFromAddress(poke: boolean): number {
-        let t = this.vram[this.address];
+        let t = this.read(this.address);
 
-        if ((this.address % 0x4000) <= 0x3F00) {
+        if (this.address <= 0x3EFF) {
             let buf = this.bufferedReadValue;
             this.bufferedReadValue = t;
             t = buf;
@@ -487,8 +519,7 @@ export class PPU {
         this.controlIncrement =   ((value >> 2) & 1);
         this.controlSpriteTable = ((value >> 3) & 1);
         this.controlBackgroundTable = ((value >> 4) & 1);
-        console.log("====", this.controlBackgroundTable, this.frame);
-
+        
         this.controlSpriteSize =      ((value >> 5) & 1);
         this.controlMasterSlave =     ((value >> 6) & 1);
         this.generateNMI =            ((value >> 7) & 1) == 1;

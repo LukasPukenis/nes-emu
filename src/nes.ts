@@ -18,31 +18,45 @@ export class NES {
 
     private lastTime: number = 0;
     
+    canvas: HTMLCanvasElement;
+    debugCanvas: HTMLCanvasElement;
+    
+
     constructor(canvas: HTMLCanvasElement, debugCanvas: HTMLCanvasElement = null) {
         setTimeout(() => {
-            console.log("FINISHD");
+            console.log("*** FINISHED");
             // @ts-ignore
             window.finish = true;
-        }, 30000);
+        }, 10000);
 
         console.assert(canvas);
 
-        this.controller1 = new Controller();
-        this.controller2 = new Controller();
+        this.canvas = canvas;
+        this.debugCanvas = debugCanvas;
         
-        this.rom = new ROM();
-        this.memory = new Memory(this);        
-        this.ppu = new PPU(this, canvas && canvas.getContext('2d'), debugCanvas && debugCanvas.getContext('2d'));
-        this.cpu = new CPU(this);
-
-        this.mapper = new Mapper0(this.rom, this.cpu, this.ppu);
+        this.controller1 = new Controller();
+        this.controller2 = new Controller();                
     }
      
     async load(path: string, startingAddress?: number) {
         console.log('loading...');        
+        this.rom = new ROM();
+
         await this.rom.load(path)        
+
+        this.memory = new Memory(this);        
+        this.ppu = new PPU(this, this.canvas && this.canvas.getContext('2d'), this.debugCanvas && this.debugCanvas.getContext('2d'));
+        this.cpu = new CPU(this);
+
+        this.mapper = new Mapper0(this.rom, this.cpu, this.ppu);
+
         this.cpu.loadROM(this.rom, startingAddress);
+
         console.log('loaded!');
+    }
+
+    getROM(): ROM {
+        return this.rom;
     }
 
     getController1() {
@@ -77,8 +91,7 @@ export class NES {
         let cyclesToRun = dt * CPU_FREQ;
         // console.log('cyclesToRun:', Math.round(cyclesToRun));
         
-        // @ts-ignore
-        while (cyclesToRun > 0 && !window.finish) {
+        while (cyclesToRun > 0) {
             let cpuCyclesUsed = this.cpu.step();                        
             cyclesToRun -= cpuCyclesUsed;
                         

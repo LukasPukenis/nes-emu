@@ -66,6 +66,7 @@ export class ROM {
     }
 
     getMirror(): number {
+        console.assert(this.header, "ROM is not yet loaded?");
         return this.header.mirror;
     }
 
