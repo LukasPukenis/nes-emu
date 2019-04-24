@@ -9,6 +9,10 @@ I refactored a lot of CPU code.
 
 
 ----------- TODO --------------
-[ ] - add official rom tests just add to gitignore to avoid legal issues
-[ ] - Check all the info - PRGROM and CHRROM as this caused major headache
+[x] - add official rom tests just add to gitignore to avoid legal issues
+[ ] - Check all the info - PRGROM and CHRROM as this caused major headache with tests
 [ ] - given a test input sequence with timings(based on cpu cycles executed) compare CPU and PPU data
+[ ] - donkey kong logo is improper
+[ ] - donkey kong nametables are improper
+[ ] - bkg.nes tiles are wrong but controller works
+[ ] - balloon fight title is good but the controller doesn't work
