@@ -6,10 +6,15 @@
                 padding: 0;
                 text-align: center;
             }
+            canvas {
+                display: block;
+            }
         </style>
     </head>
     <body> 
-        <canvas id="canvas" width="256" height="240" style="border: 1px solid blue;"></canvas>        
+        <canvas id="canvas" width="256" height="240" style="border: 1px solid blue;"></canvas>
+        <canvas id="spritesDebugCanvas" width="512" height="240" style="border: 1px solid red;"></canvas>
+        
         <script defer src="dist/js/index.js"></script>                     
     </body>
 </html>
