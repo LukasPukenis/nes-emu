@@ -56,6 +56,7 @@ window.addEventListener("keyup", function(event) {
 // @ts-ignore
 window.nes = nes;
 
-nes.load(path).then(() => {    
+nes.load(path).then(() => {
+    console.log("ROM Loaded"); 
     nes.run();
 });

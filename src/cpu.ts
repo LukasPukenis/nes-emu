@@ -497,7 +497,8 @@ export class CPU {
 		let data = opcodeData;
 
 
-		if (false) { // todo: make this code be based on testing flag which should be set in each test file yadda yadda
+		// @ts-ignore, set up JEST
+		if (DEBUG) { // todo: make this code be based on testing flag which should be set in each test file yadda yadda
 			// throw new Error('This function has side effects and it costs you hours!!!!!');
 			
 			let data: OpData = this.currentData;
@@ -537,7 +538,6 @@ export class CPU {
 			
 			if (!this.currentOpcode.noData) {
 				if (this.currentOpcode.showMemValue) {
-					console.log("Reading from ", data.toString(16), this.memory.read(data, true));
 					instruction += ' = ' + this.memory.read(data, true).toString(16).toUpperCase().padStart(2, '0');			
 				}
 

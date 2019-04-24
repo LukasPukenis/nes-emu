@@ -6,6 +6,8 @@ import { Mapper } from './mappers/mapper';
 import { Mapper0 } from './mappers/mapper0';
 import { Controller } from './controller';
 
+// @ts-ignore
+window.debug = [];
 
 export class NES {
     private cpu: CPU;
@@ -27,7 +29,7 @@ export class NES {
             console.log("*** FINISHED");
             // @ts-ignore
             window.finish = true;
-        }, 10000);
+        }, 4000);
 
         console.assert(canvas);
 
@@ -39,7 +41,7 @@ export class NES {
     }
      
     async load(path: string, startingAddress?: number) {
-        console.log('loading...');        
+        console.log('loading...', path);
         this.rom = new ROM();
 
         await this.rom.load(path)        
@@ -84,6 +86,9 @@ export class NES {
     }
 
     step() {
+        // @ts-ignore
+        if (window.finished) return;
+
         let currTime = new Date().getTime();        
         let dt = (currTime - this.lastTime) / 1000.0;
         this.lastTime = currTime;
@@ -92,11 +97,15 @@ export class NES {
         // console.log('cyclesToRun:', Math.round(cyclesToRun));
         
         while (cyclesToRun > 0) {
+            // @ts-ignore
+            if (window.finished) return;
             let cpuCyclesUsed = this.cpu.step();                        
             cyclesToRun -= cpuCyclesUsed;
                         
             // ppu runs at exactly 3 times the CPU clock
             for (let i = 0; i < 3*cpuCyclesUsed; i++) {
+                // @ts-ignore
+                if (window.finished) return;
                 this.ppu.step();
             }
         }

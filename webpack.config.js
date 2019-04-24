@@ -38,6 +38,9 @@ module.exports = {
     minimize: false,
     splitChunks: false
   },
+  node: {
+    fs: 'empty'
+  },
   module: {
     rules: [
       {

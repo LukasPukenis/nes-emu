@@ -18,18 +18,43 @@ export class Memory {
         // zero page? it's also mirrored twice: 0...0x7FF 0x800..0xFFF
         if (addr < 0x2000) {            
             return this.ram[ addr % 0x800 ] & 0xFF;
-        } else if (addr < 0x4000 || addr == 0x4014) {
-            // ppu            
-            return this.nes.getPPU().readRegister(addr, poke);
+        } else if (addr < 0x4000) {
+            return this.nes.getPPU().readRegister(0x2000 + addr % 8, poke);
+        } else if (addr == 0x4014) {
+            this.nes.getPPU().readRegister(addr);
         } else if (addr == 0x4015) {
             // apu            
+            // throw new Error("APU memory access not implemented");
             return this.memory[ addr ] & 0xFF;
         } else if (addr == 0x4016) { 
             return this.nes.getController1().read();
         } else if (addr == 0x4017) {
             return this.nes.getController2().read();
         } else {
-            return this.memory[ addr ] & 0xFF;
+            return this.memory[ addr ] & 0xFF; // mapper ram
+        }
+    }
+
+    write(addr: number, value: number) {        
+        if (addr < 0x2000) {
+            this.ram[ addr % 0x800 ] = value;
+        } else if (addr < 0x4000) {
+            this.nes.getPPU().writeRegister(0x2000 + addr%8, value);
+        } else if (addr == 0x4014) {
+            this.nes.getPPU().writeRegister(addr, value);        
+        } else if (addr < 0x4014) {
+            // APU
+            // PPU I/O registers at $2000-$2007 are mirrored at $2008-$200F, $2010-$2017, $2018-$201F, and so forth, all the way up to $3FF8-$3FFF.
+            // this.nes.getPPU().writeRegister(0x2000 + addr%8, value);        
+        } else if (addr == 0x4015) {
+            // apu
+            this.memory[ addr ] = value & 0xFF;
+        } else if (addr == 0x4016) {
+            this.nes.getController1().write(value);
+        } else if (addr == 0x4017) {
+            this.nes.getController2().write(value);
+        } else {
+            this.memory[ addr ] = value; // todo: what???? there's already .ram
         }
     }
 
@@ -47,28 +72,7 @@ export class Memory {
         let low =  this.read(addr, poke);
         let high = this.read(addr+1, poke);
         return (high << 8) | low;
-    }
-
-    write(addr: number, value: number) {        
-        if (addr < 0x2000) {            
-            this.ram[ addr % 0x800 ] = value;            
-        } else if (addr == 0x4014) {
-            // ppu
-            this.nes.getPPU().write(addr, value);
-        } else if (addr < 0x4014) {
-            // PPU I/O registers at $2000-$2007 are mirrored at $2008-$200F, $2010-$2017, $2018-$201F, and so forth, all the way up to $3FF8-$3FFF.
-            this.nes.getPPU().write(0x2000 + addr%8, value);        
-        } else if (addr == 0x4015) {
-            // apu
-            this.memory[ addr ] = value & 0xFF;
-        } else if (addr == 0x4016) {
-            this.nes.getController1().write(value);
-        } else if (addr == 0x4017) {
-            this.nes.getController2().write(value);
-        } else {
-            this.memory[ addr ] = value;
-        }
-    }    
+    }        
 
     print(from: number, to:number) {
         let output: string[] = [];

@@ -1,3 +1,5 @@
+const fs = require('mz/fs');
+
 const PRG_ROM_COUNT = 4;
 const CHR_ROM_COUNT = 5;
 const FLAG6 = 6;
@@ -38,8 +40,8 @@ export class ROM {
     }
 
     async parse() {
-        let data = await fetch(this.path);
-        let parsedData = await data.arrayBuffer();
+        let data = await fs.readFile(this.path);
+        let parsedData = data;
         this.data = new Int8Array(parsedData);
 
         if (!this.validate(this.data))

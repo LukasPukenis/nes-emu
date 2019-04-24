@@ -36,7 +36,6 @@ export class Controller {
         if ((this.strobe & 1) == 1)
             this.index = 0;
 
-        console.log('gonna return ', button, 'from', this.buttons);
         return button;
     }
 
