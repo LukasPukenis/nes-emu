@@ -69,7 +69,7 @@ export class NES {
         await this.rom.load(path)        
 
         this.memory = new Memory(this);        
-        this.ppu = new PPU(this, this.canvas && this.canvas.getContext('2d'), this.debugCanvas && this.debugCanvas.getContext('2d'));
+        this.ppu = new PPU(this, this.canvas, this.debugCanvas);
         this.cpu = new CPU(this);
 
         this.mapper = new Mapper0(this.rom, this.cpu, this.ppu);

@@ -10,7 +10,22 @@ import { Utils } from "./utils";
 // todo: this is wrong, PPU reads from the cartridge and only from pallettes(32), nametables(2048) and OAM(256) all of which are
 const VRAM_SIZE = 0x8000;
 
+const PALETTE = [0x666666, 0x002A88, 0x1412A7, 0x3B00A4, 0x5C007E, 0x6E0040, 0x6C0600, 0x561D00,
+    0x333500, 0x0B4800, 0x005200, 0x004F08, 0x00404D, 0x000000, 0x000000, 0x000000,
+    0xADADAD, 0x155FD9, 0x4240FF, 0x7527FE, 0xA01ACC, 0xB71E7B, 0xB53120, 0x994E00,
+    0x6B6D00, 0x388700, 0x0C9300, 0x008F32, 0x007C8D, 0x000000, 0x000000, 0x000000,
+    0xFFFEFF, 0x64B0FF, 0x9290FF, 0xC676FF, 0xF36AFF, 0xFE6ECC, 0xFE8170, 0xEA9E22,
+    0xBCBE00, 0x88D800, 0x5CE430, 0x45E082, 0x48CDDE, 0x4F4F4F, 0x000000, 0x000000,
+    0xFFFEFF, 0xC0DFFF, 0xD3D2FF, 0xE8C8FF, 0xFBC2FF, 0xFEC4EA, 0xFECCC5, 0xF7D8A5,
+    0xE4E594, 0xCFEF96, 0xBDF4AB, 0xB3F3CC, 0xB5EBF2, 0xB8B8B8, 0x000000, 0x000000];
+
 export class PPU {
+    debugInfo: any = {
+        data: [],
+        lowByte: 0,
+        highByte: 0,
+        attribute: 0
+    };
     nes: NES;
     vram: Uint8Array;
     mirrorTable: Uint16Array;
@@ -62,6 +77,8 @@ export class PPU {
     oamAddress: number = 0;
     v_blank: boolean = true;
 
+    canvasElement: HTMLCanvasElement;
+    debugCanvasElement: HTMLCanvasElement;
     canvas: CanvasRenderingContext2D;
     debugCanvas: CanvasRenderingContext2D;
     
@@ -71,15 +88,29 @@ export class PPU {
     pixels: Uint8ClampedArray;
     debugPixels: Uint8ClampedArray;
 
-    debugInfo: string[] = [];
-
-    constructor(nes: NES, canvas: CanvasRenderingContext2D, debugCanvas: CanvasRenderingContext2D) {
-        this.canvas = canvas;
-        this.debugCanvas = debugCanvas;
+    constructor(nes: NES, canvas: HTMLCanvasElement, debugCanvas: HTMLCanvasElement) {
+        this.canvasElement = canvas;
+        this.debugCanvasElement = debugCanvas;
+        this.canvas = this.canvasElement.getContext('2d');
+        this.debugCanvas = this.debugCanvasElement.getContext('2d');
+        
 
         if (this.canvas) {
             this.imageData = this.canvas.createImageData(256, 240);
             this.pixels = this.imageData.data;
+
+            function getMousePos(canvas: any, evt: MouseEvent) {
+                var rect = canvas.getBoundingClientRect();
+                return {
+                    x: (evt.clientX - rect.left) / (rect.right - rect.left) * canvas.width,
+                    y: (evt.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height
+                };
+            }
+
+            addEventListener('mousemove', (e: MouseEvent) => {
+                let info = getMousePos(this.canvasElement, e);
+                // console.log(info, this.debugInfo.data[info.y][info.x]);
+            });                    
         }
 
         if (this.debugCanvas) {
