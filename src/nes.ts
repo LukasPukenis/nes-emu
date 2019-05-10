@@ -41,7 +41,27 @@ export class NES {
         this.controller1 = new Controller();
         this.controller2 = new Controller();                
     }
-     
+    
+    printBlaargDebugMessage() {
+        const mem = this.memory;
+        const status = mem.read(0x6000, true);
+        
+        if (status == 0) {
+            console.log("BLAARG's status is OK");
+        } else {
+            let res:any = [];
+
+            let data:any = -1;
+            let i = 0;
+            while (data != 0) {
+                data = mem.read(0x6004+i, true);
+                res.push(String.fromCharCode(parseInt(data, 10)));
+                i++;
+            }            
+            console.log("BLAARG has an error: ", res.join(''));
+        }
+    }
+
     async load(path: string, startingAddress?: number) {
         console.log('loading...', path);
         this.rom = new ROM();
