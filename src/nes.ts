@@ -24,14 +24,16 @@ export class NES {
     debugCanvas: HTMLCanvasElement;
     
 
-    constructor(canvas: HTMLCanvasElement, debugCanvas: HTMLCanvasElement = null) {
+    constructor(canvas: HTMLCanvasElement, debugCanvas: HTMLCanvasElement = null) {        
         setTimeout(() => {
-            console.log("*** FINISHED");
+            console.log("*** FINISHED running***");
             // @ts-ignore
-            window.finish = true;
-        }, 4000);
+            window.finished = true;
+        }, 3000);
 
-        console.assert(canvas);
+        // @ts-ignore
+        if (!window.hasOwnProperty('TEST'))
+            console.assert(canvas);
 
         this.canvas = canvas;
         this.debugCanvas = debugCanvas;
@@ -85,20 +87,31 @@ export class NES {
         return this.mapper;
     }
 
-    step() {
+    runFor(time: number) {
+        this.step(time);
+    }
+
+    step(time: number) {
         // @ts-ignore
         if (window.finished) return;
 
         let currTime = new Date().getTime();        
-        let dt = (currTime - this.lastTime) / 1000.0;
+        let dt = ((currTime - this.lastTime) / 1000.0);
+        if (time > 0) dt = time;
+
         this.lastTime = currTime;
 
-        let cyclesToRun = dt * CPU_FREQ;
+        // fuse for not hogging CPU 100%
+        let _dt = dt < 0.3 ? dt : 0;
+        // console.log(_dt);
+
+        let cyclesToRun = _dt * CPU_FREQ;
         // console.log('cyclesToRun:', Math.round(cyclesToRun));
         
         while (cyclesToRun > 0) {
             // @ts-ignore
             if (window.finished) return;
+
             let cpuCyclesUsed = this.cpu.step();                        
             cyclesToRun -= cpuCyclesUsed;
                         
@@ -111,13 +124,12 @@ export class NES {
         }
 
         // lets render stuff in one go - this should work for most basic NROM games
-        // which do not do any trickeri per scanline, no visual effects based on ppu timing
-        this.ppu.render();
-
+        // which do not do any trickery per scanline, no visual effects based on ppu timing
+       this.ppu.render();
     }
 
     _step(delta: number) {
-        this.step();
+        this.step(0);
 
         requestAnimationFrame(this._step.bind(this));
     }
