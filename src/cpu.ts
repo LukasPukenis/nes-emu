@@ -374,16 +374,23 @@ export class CPU {
 
 		this.PPUCNT1 = 0;
 		this.PPUCNT2 = 0;        
-        this.rom = rom;
+    this.rom = rom;
 
-        let prgrom = this.rom.getPRGROMS()[0];
-        console.assert(prgrom.length == 0x4000, prgrom.length, 0x4000);
-        
-        for (let i = 0; i < prgrom.length; i++) {
-			this.memory.write(0x8000+i, prgrom[i]);
-			this.memory.write(0xC000+i, prgrom[i]); // todo: wrap in a wrapper with mirrors
-        }
+		let prgroms = this.rom.getPRGROMS();
+		let prgromIndex1 = 0;
+		let prgRomIndex2 = 0;
+		if (prgroms.length == 1) {
+		} else if (prgroms.length == 2) {
+			prgRomIndex2 = 1;
+		} else {
+			console.error("PRGROM count is errorneous:", prgroms.length);
+		}       
 		
+		
+    for (let i = 0; i < 0x4000; i++) {
+			this.memory.write(0x8000+i, prgroms[prgromIndex1][i]);
+			this.memory.write(0xC000+i, prgroms[prgRomIndex2][i]);
+    }	
 
 		// starting location for NROM is FFFC-FFFD
 		if (!startingAddress)
