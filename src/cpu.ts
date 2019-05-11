@@ -503,9 +503,7 @@ export class CPU {
 		this.currentOpcode = opcode;		
 		let data = opcodeData;
 
-
-		// @ts-ignore, set up JEST
-		if (DEBUG) { // todo: make this code be based on testing flag which should be set in each test file yadda yadda
+		if (window.hasOwnProperty('DEBUG_CPU')) { // todo: make this code be based on testing flag which should be set in each test file yadda yadda
 			// throw new Error('This function has side effects and it costs you hours!!!!!');
 			
 			let data: OpData = this.currentData;
@@ -544,8 +542,8 @@ export class CPU {
 			
 			
 			if (!this.currentOpcode.noData) {
-				if (this.currentOpcode.showMemValue) {
-					instruction += ' = ' + this.memory.read(data, true).toString(16).toUpperCase().padStart(2, '0');			
+				if (this.currentOpcode.showMemValue && (data < 0x2000 || data > 0x2007)) {
+				instruction += ' = ' + this.memory.read(data, true).toString(16).toUpperCase().padStart(2, '0');			
 				}
 
 				if (this.currentOpcode.addr_mode == AddressingModes.modeAbsolute) {
