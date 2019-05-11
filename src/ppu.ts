@@ -100,10 +100,15 @@ export class PPU {
     constructor(nes: NES, canvas: HTMLCanvasElement, debugCanvas: HTMLCanvasElement) {
         this.canvasElement = canvas;
         this.debugCanvasElement = debugCanvas;
-        this.canvas = this.canvasElement.getContext('2d');
-        this.debugCanvas = this.debugCanvasElement.getContext('2d');
-        
 
+        if (window.hasOwnProperty("TEST")) {
+
+        } else {
+            this.canvas = this.canvasElement.getContext('2d');
+            this.debugCanvas = this.debugCanvasElement.getContext('2d');        
+        }
+            
+    
         if (this.canvas) {
             this.imageData = this.canvas.createImageData(256, 240);
             this.pixels = this.imageData.data;
@@ -246,11 +251,12 @@ export class PPU {
             h = 16;
         }
 
+        let oamData = this.oamData;
         let count = 0;
         for (let i = 0; i < 64; i++) {
-            let y = this.oamData[i*4+0];
-            let a = this.oamData[i*4+2];
-            let x = this.oamData[i*4+3];
+            let y = oamData[i*4+0];
+            let a = oamData[i*4+2];
+            let x = oamData[i*4+3];
             let row = this.scanLine - y;
             if (row < 0 || row >= h) {
                 continue;
