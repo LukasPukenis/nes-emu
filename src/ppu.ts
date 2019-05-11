@@ -1,6 +1,8 @@
 import { NES } from "./nes";
 import { CPU } from "./cpu";
 import { Utils } from "./utils";
+import { Mapper } from "./mappers/mapper";
+import { Memory } from "./memory";
 
 /**
  * Abbreviations used:
@@ -32,11 +34,15 @@ export class PPU {
     vram: Uint8Array;
     mirrorTable: Uint16Array;
 
+    mapper: Mapper;
+    cpu: CPU;
+    memory: Memory;
+
     w: boolean = false; // write toggle
     v: number = 0;      // current address
     t: number = 0;      // temp address
     
-    bufferedReadValue: number;
+    bufferedReadValue: number = 0;
     
     paletteData: Uint8Array;
     cycle: number = 0;
@@ -107,8 +113,7 @@ export class PPU {
             this.canvas = this.canvasElement.getContext('2d');
             this.debugCanvas = this.debugCanvasElement.getContext('2d');        
         }
-            
-    
+                
         if (this.canvas) {
             this.imageData = this.canvas.createImageData(256, 240);
             this.pixels = this.imageData.data;
@@ -133,6 +138,10 @@ export class PPU {
         }
 
         this.nes = nes;
+        this.mapper = this.nes.getMapper();
+        this.cpu = this.nes.getCPU();
+        this.memory = this.nes.getMemory();
+
         this.paletteData = new Uint8Array(32);        
 
         this.oamData = new Uint8Array(256);
@@ -315,8 +324,8 @@ export class PPU {
         const x = this.cycle - 1;
         const y = this.scanLine;
                         
-        if (window.hasOwnProperty("TEST"))
-            return;            
+        // if (window.hasOwnProperty("TEST")) // todo: slowwwwww
+        //     return;            
         
         let background = this.backgroundPixel()
         let [idx, sprite] = this.spritePixel();
@@ -491,7 +500,7 @@ export class PPU {
             this.nmiDelay--;
             if (this.nmiDelay == 0 && this.v_blank && this.generateNMI) {
                 // console.log('nmi');
-                this.nes.getCPU().triggerNMI();
+                this.cpu.triggerNMI();
             }
         }
 
@@ -730,11 +739,50 @@ export class PPU {
         this.debugCanvas.putImageData(this.debugImageData, 0, 0);        
     }
 
-    step() {
+    step(times: number) {
+        for (let i = 0; i < times; i++)
+            this._step();
+    }
+
+    _step() {
         this.lastCycle = this.cycle;
-        this.tick();
+        
+        
+        // this.tick();
+        if (this.nmiDelay > 0) {
+            this.nmiDelay--;
+            if (this.nmiDelay == 0 && this.v_blank && this.generateNMI) {
+                // console.log('nmi');
+                this.cpu.triggerNMI();
+            }
+        }
+
+        let passed = true;
+        if (this.maskShowBG == 1 || this.maskShowSprites == 1) {
+            if (this.oddFrame && this.scanLine == 261 && this.cycle == 339) {
+                this.cycle = 0;
+                this.scanLine = 0;
+                this.frame++;
+                this.oddFrame = !this.oddFrame;
+                passed = false;
+            }
+        }
+
+        if (passed) {
+            this.cycle++;
+            if (this.cycle > 340) {
+                this.cycle = 0;
+                this.scanLine++;
+                if (this.scanLine > 261) {
+                    this.scanLine = 0;
+                    this.frame++;
+                    this.oddFrame = !this.oddFrame;
+                }
+            }
+        }
+
         const cycleDiff = Math.abs(this.lastCycle - this.cycle);
-        console.assert(cycleDiff == 1|| cycleDiff == 340 || cycleDiff == 339, cycleDiff.toString());
+        // console.assert(cycleDiff == 1|| cycleDiff == 340 || cycleDiff == 339, cycleDiff.toString());
         
         let render = this.maskShowBG == 1 || this.maskShowSprites == 1;
         let preLine = this.scanLine == 261;
@@ -806,9 +854,7 @@ export class PPU {
                
     }
 
-    readStatus(poke: boolean): number {        
-        console.assert(!poke);
-        
+    readStatus(poke: boolean): number {                
         let result: number = this.register & 0x1F;
         
         if (this.flagOverflow == 1)
@@ -896,7 +942,7 @@ export class PPU {
         addr = addr % 0x4000;
 
         if (addr < 0x2000) {
-            let x = this.nes.getMapper().read(addr, poke) & 0xFF; 
+            let x = this.mapper.read(addr, poke) & 0xFF; 
             // console.log("from ", addr.toString(16), '->', x.toString(16));
             return x;
         } else if (addr < 0x3F00) {
@@ -1008,8 +1054,8 @@ export class PPU {
     }
 
     writeDMA(value: number): void {        
-        let cpu = this.nes.getCPU();
-        let memory = this.nes.getMemory();
+        let cpu = this.cpu;
+        let memory = this.memory;
 
         let addr = value << 8;
         for (let i = 0; i < 256; i++) {
@@ -1023,7 +1069,7 @@ export class PPU {
         if (cpu.cycles % 2 == 1)
             stall++;
 
-        this.nes.getCPU().setStall(stall);
+        this.cpu.setStall(stall);
     }
 
     readAddress(value: number, poke: boolean): number {

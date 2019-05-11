@@ -18,6 +18,7 @@ export class NES {
     private controller1: Controller;
     private controller2: Controller;
 
+    private totalCycles: number = 0;
     private lastTime: number = 0;
     
     canvas: HTMLCanvasElement;
@@ -68,11 +69,11 @@ export class NES {
 
         await this.rom.load(path)        
 
+        this.mapper = new Mapper0(this.rom);
         this.memory = new Memory(this);        
-        this.ppu = new PPU(this, this.canvas, this.debugCanvas);
         this.cpu = new CPU(this);
+        this.ppu = new PPU(this, this.canvas, this.debugCanvas);
 
-        this.mapper = new Mapper0(this.rom, this.cpu, this.ppu);
 
         this.cpu.loadROM(this.rom, startingAddress);
 
@@ -134,15 +135,13 @@ export class NES {
 
             let cpuCyclesUsed = this.cpu.step();                        
             cyclesToRun -= cpuCyclesUsed;
-                        
-            // ppu runs at exactly 3 times the CPU clock
-            for (let i = 0; i < 3*cpuCyclesUsed; i++) {
-                // @ts-ignore
-                if (window.finished) return;
-                this.ppu.step();
-            }
-        }
+            
+            // ppu runs at exactly 3 times the CPU clock                
+            this.ppu.step(cpuCyclesUsed * 3);            
 
+            this.totalCycles += cpuCyclesUsed;
+        }
+        
         // lets render stuff in one go - this should work for most basic NROM games
         // which do not do any trickery per scanline, no visual effects based on ppu timing
        this.ppu.render();
