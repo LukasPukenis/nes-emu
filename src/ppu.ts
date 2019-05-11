@@ -56,8 +56,8 @@ export class PPU {
     spritePriorities: number[] = [];
     spriteIndexes: number[] = [];
 
-    flagOverflow: boolean = false;
-    flagZeroHit: boolean = false;
+    flagOverflow: number = 0;
+    flagZeroHit: number = 0;
     
     // todo: would be great to wrap these around UintArray8 or maybe provide getter/setter to guard against byte/word bounds
     spriteCount: number = 0;
@@ -184,13 +184,116 @@ export class PPU {
         
         this.paletteData[address] = value & 0xFF;
     }
-    
-    evaluateSprites() {
-
-    }
-
+        
     fetchTileData() {
         return (this.tileData >> 32) & 0xFFFFFFFF;
+    }
+    
+    fetchSpritePattern(i: number, row: number): number {
+        let tile = this.oamData[i*4+1];
+        const attributes = this.oamData[i*4+2];
+        let address = 0;
+
+        if (this.controlSpriteSize == 0) {
+            if ((attributes & 0x80) == 0x80) {
+                row = 7 - row;
+            }
+            const table = this.controlSpriteTable;
+            address = 0x1000*(table & 0xFFFF) + (tile & 0xFFFF)*16 + (row & 0xFFFF);
+        } else {
+            if ((attributes & 0x80) == 0x80) {
+                row = 15 - row;
+            }
+            const table = tile & 1;
+            tile &= 0xFE;
+            if (row > 7) {
+                tile++;
+                row -= 8;
+            }
+            address = 0x1000*(table & 0xFFFF) + (tile & 0xFFFF)*16 + (row & 0xFFFF);
+        }
+        let a = (attributes & 3) << 2;
+        let lowTileByte = this.read(address);
+        let highTileByte = this.read(address + 8);
+        let data = 0;
+
+        for (let i = 0; i < 8; i++) {
+            var p1, p2;
+
+            if ((attributes & 0x40) == 0x40) {
+                p1 = (lowTileByte & 1) << 0;
+                p2 = (highTileByte & 1) << 1;
+                lowTileByte >>= 1;
+                highTileByte >>= 1;
+            } else {
+                p1 = (lowTileByte & 0x80) >> 7;
+                p2 = (highTileByte & 0x80) >> 6;
+                lowTileByte <<= 1;
+                highTileByte <<= 1;
+            }
+
+            data <<= 4;
+            data |= (a | p1 | p2) & 0xFFFFFFFF;
+        }
+        return data
+    }
+    
+    evaluateSprites() {
+        let h = 0;
+        if (this.controlSpriteSize == 0) {
+            h = 8;
+        } else {
+            h = 16;
+        }
+
+        let count = 0;
+        for (let i = 0; i < 64; i++) {
+            let y = this.oamData[i*4+0];
+            let a = this.oamData[i*4+2];
+            let x = this.oamData[i*4+3];
+            let row = this.scanLine - y;
+            if (row < 0 || row >= h) {
+                continue;
+            }
+
+            if (count < 8) {
+                this.spritePatterns[count] = this.fetchSpritePattern(i, row);
+                this.spritePositions[count] = x;
+                this.spritePriorities[count] = (a >> 5) & 1;
+                this.spriteIndexes[count] = i & 0xFF;
+            }
+            count++
+        }
+
+        if (count > 8) {
+            count = 8;
+            this.flagOverflow = 1;
+        }
+
+        this.spriteCount = count;
+    }
+
+    spritePixel() {        
+        if (this.maskShowSprites == 0) {
+            return [0, 0];
+        }
+
+        for (let i = 0; i < this.spriteCount; i++) {
+            let offset = (this.cycle - 1) - this.spritePositions[i];
+            if (offset < 0 || offset > 7) {
+                continue;
+            }
+
+            offset = 7 - offset;
+            const color = 0xFF & (this.spritePatterns[i] >> (((offset*4) & 0xFF)) & 0x0F);
+            if (color % 4 == 0) {
+                continue;
+            }
+
+            return [i & 0xFF, color];
+        }
+
+        return [0, 0];
     }
 
     backgroundPixel() {
@@ -205,52 +308,51 @@ export class PPU {
     renderPixel() {
         const x = this.cycle - 1;
         const y = this.scanLine;
-        
-        let background = this.backgroundPixel();
-            
-        if (!this.debugInfo.data[y])
-            this.debugInfo.data[y] = [];
-
-
-    // renderingEnabled := ppu.flagShowBackground != 0 || ppu.flagShowSprites != 0
-	// preLine := ppu.ScanLine == 261
-	// visibleLine := ppu.ScanLine < 240
-	// // postLine := ppu.ScanLine == 240
-	// renderLine := preLine || visibleLine
-	// preFetchCycle := ppu.Cycle >= 321 && ppu.Cycle <= 336
-	// visibleCycle := ppu.Cycle >= 1 && ppu.Cycle <= 256
-	// fetchCycle := preFetchCycle || visibleCycle
-
-
-        this.debugInfo.data[y][x] = {
-            background: background,
-            attribute: this.debugInfo.attribute,
-            lowByte: this.debugInfo.lowByte,
-            highByte: this.debugInfo.highByte
-        }
-
+                        
         if (window.hasOwnProperty("TEST"))
             return;            
-
+        
+        let background = this.backgroundPixel()
+        let [idx, sprite] = this.spritePixel();
         if (x < 8 && this.maskShowLeftBG == 0) {
             background = 0;
         }
-        
-        var color = background % 4 != 0 ? background : 0;
-        
-        // const b = background % 4 != 0;
-        // const s = 0;// todo sprite % 4 != 0;
-        // var color = 0;
-        // if (!b && !s) {
-        //     color = 0
-        // } else if (!b && s) {
-        //     color = 0; // todo sprite | 0x10;
-        // } else if (b && !s) {
-        //     color = background;
-        // } else {
-        //     color = background;
+        if (x < 8 && this.maskShowLeftSprites == 0) {
+            sprite = 0;
+        }
+        const b = background % 4 != 0;
+        const s = sprite % 4 != 0;
+        var color = 0;
+
+        if (!b && !s) {
+            color = 0;
+        } else if (!b && s) {
+            color = sprite | 0x10;
+        } else if (b && !s) {
+            color = background;
+        } else {
+            if (this.spriteIndexes[idx] == 0 && x < 255) {
+                this.flagZeroHit = 1;
+            }
+            if (this.spritePriorities[idx] == 0) {
+                color = sprite | 0x10;
+            } else {
+                color = background;
+            }
+        }        
+
+
+        // if (!this.debugInfo.data[y])
+        //   this.debugInfo.data[y] = [];
+    
+        // this.debugInfo.data[y][x] = {
+        //     background: background,
+        //     attribute: this.debugInfo.attribute,
+        //     lowByte: this.debugInfo.lowByte,
+        //     highByte: this.debugInfo.highByte
         // }
 
+        
         let c = PALETTE[this.readPalette(color) % 64];
 
         const colr = (c >> 16) & 0xFF;
@@ -315,11 +417,7 @@ export class PPU {
             this.v = (this.v & 0xFC1F) | (y << 5);
         }
     }
-
-    static DDD: number = 0;
-
-    static nms = new Set();
-
+    
     fetchNameTableByte() {
         const v = this.v;
         const address = 0x2000 | (v & 0x0FFF);
@@ -329,25 +427,8 @@ export class PPU {
             this.nameTableByte = 0x24;
         } else if (this.nameTableByte == 0xF1) {
             this.nameTableByte = 0x24;
-        }
-        
-        if (!PPU.nms.has(this.nameTableByte))
-        PPU.nms.add(this.nameTableByte);
-        
-        PPU.DDD++;
-        PPU.DDD %= 2;
-        
-        if (PPU.DDD == 0) {
-            // this.nameTableByte = 0x0C;
-        } else if (PPU.DDD == 1) {
-            // this.nameTableByte = 0x24;
-        }
+        }        
     }
-
-    // v := ppu.v
-	// address := 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07)
-	// shift := ((v >> 4) & 4) | (v & 2)
-    // ppu.attributeTableByte = ((ppu.Read(address) >> shift) & 3) << 2
     
     fetchAttributeTableByte() {
         let v = this.v;
@@ -363,7 +444,6 @@ export class PPU {
         console.assert(table < 2);
         
         const tile = this.nameTableByte;
-        // if (tile == 0x0C) console.log("======= 0x0C")
         const address = 0x1000*table + tile*16 + fineY;
         this.lowTileByte = this.read(address);
         this.debugInfo.lowByte = this.lowTileByte;
@@ -384,11 +464,6 @@ export class PPU {
         let data = 0;
         const a = this.attributeTableByte & 0xFF;
 
-        if (this.nameTableByte == 0xF4) {
-            // console.log('->', this.lowTileByte.toString(2).padStart(8, '0'));
-            console.log('->', this.lowTileByte.toString(2).padStart(8, '0'));
-            
-        }
         for (let i = 0; i < 8; i++) {            
             const p1 = (this.lowTileByte & 0x80) >> 7;
             const p2 = (this.highTileByte & 0x80) >> 6;
@@ -402,10 +477,7 @@ export class PPU {
             data |= (a | p1 | p2) & 0xFFFFFFFF;
         }
         
-        this.tileData |= data; 
-        if (this.nameTableByte == 0x2) {
-            console.log(this.tileData.toString(2).padStart(32, '0'));
-        }
+        this.tileData |= data;         
     }
 
     tick() {        
@@ -722,8 +794,8 @@ export class PPU {
 
         if (preLine && this.cycle == 1) {
             this.clearVerticalBlank();                      
-            this.flagZeroHit = false;
-            this.flagOverflow = false;
+            this.flagZeroHit = 0;
+            this.flagOverflow = 0;
         }
                
     }
@@ -733,10 +805,10 @@ export class PPU {
         
         let result: number = this.register & 0x1F;
         
-        if (this.flagOverflow)
+        if (this.flagOverflow == 1)
             result |= 1 << 5;
         
-        if (this.flagZeroHit)
+        if (this.flagZeroHit == 1)
             result |= 1 << 6;
         
         if (this.v_blank)
