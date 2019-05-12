@@ -327,8 +327,37 @@ export class PPU {
         // if (window.hasOwnProperty("TEST")) // todo: slowwwwww
         //     return;            
         
-        let background = this.backgroundPixel()
-        let [idx, sprite] = this.spritePixel();
+        // let background = this.backgroundPixel()
+
+        let background = 0;
+        if (this.maskShowBG != 0) {
+            const tileData = (this.tileData >> 32) & 0xFFFFFFFF;
+            const data = tileData >> ((7 - this.fineX) * 4);
+            background = data & 0xF;
+        }
+
+        // let [idx, sprite] = this.spritePixel();
+        let idx = 0;
+        let sprite = 0;
+
+        if (this.maskShowSprites == 1) {
+            for (let i = 0; i < this.spriteCount; i++) {
+                let offset = (this.cycle - 1) - this.spritePositions[i];
+                if (offset < 0 || offset > 7) {
+                    continue;
+                }
+    
+                offset = 7 - offset;
+                const color = 0xFF & (this.spritePatterns[i] >> (((offset*4) & 0xFF)) & 0x0F);
+                if (color % 4 == 0) {
+                    continue;
+                }
+    
+                idx = i & 0xFF;
+                sprite = color;
+            }
+        }
+
         if (x < 8 && this.maskShowLeftBG == 0) {
             background = 0;
         }
@@ -368,7 +397,13 @@ export class PPU {
         // }
 
         
-        let c = PALETTE[this.readPalette(color) % 64];
+        if (color >= 16 && color%4 == 0) {
+            color -= 16
+        }
+        
+        const fromPalette = this.paletteData[color] % 64;
+
+        let c = PALETTE[fromPalette];
 
         const colr = (c >> 16) & 0xFF;
         const colg = (c >> 8) & 0xFF;
@@ -731,127 +766,125 @@ export class PPU {
 
     render() {        
         // @ts-ignore
-        if (window.hasOwnProperty('TEST'))
-            return;
+        // if (window.hasOwnProperty('TEST'))
+        //     return;
         
-        this.debugRenderSprites();
         this.canvas.putImageData(this.imageData, 0, 0);
-        this.debugCanvas.putImageData(this.debugImageData, 0, 0);        
+
+        // this.debugRenderSprites();
+        // this.debugCanvas.putImageData(this.debugImageData, 0, 0);        
     }
 
     step(times: number) {
-        for (let i = 0; i < times; i++)
-            this._step();
-    }
-
-    _step() {
-        this.lastCycle = this.cycle;
-        
-        
-        // this.tick();
-        if (this.nmiDelay > 0) {
-            this.nmiDelay--;
-            if (this.nmiDelay == 0 && this.v_blank && this.generateNMI) {
-                // console.log('nmi');
-                this.cpu.triggerNMI();
+        for (let i = 0; i < times; i++) {
+            
+            this.lastCycle = this.cycle;
+            
+            
+            // this.tick();
+            if (this.nmiDelay > 0) {
+                this.nmiDelay--;
+                if (this.nmiDelay == 0 && this.v_blank && this.generateNMI) {
+                    // console.log('nmi');
+                    this.cpu.triggerNMI();
+                }
             }
-        }
 
-        let passed = true;
-        if (this.maskShowBG == 1 || this.maskShowSprites == 1) {
-            if (this.oddFrame && this.scanLine == 261 && this.cycle == 339) {
-                this.cycle = 0;
-                this.scanLine = 0;
-                this.frame++;
-                this.oddFrame = !this.oddFrame;
-                passed = false;
-            }
-        }
-
-        if (passed) {
-            this.cycle++;
-            if (this.cycle > 340) {
-                this.cycle = 0;
-                this.scanLine++;
-                if (this.scanLine > 261) {
+            let passed = true;
+            if (this.maskShowBG == 1 || this.maskShowSprites == 1) {
+                if (this.oddFrame && this.scanLine == 261 && this.cycle == 339) {
+                    this.cycle = 0;
                     this.scanLine = 0;
                     this.frame++;
                     this.oddFrame = !this.oddFrame;
+                    passed = false;
                 }
             }
-        }
 
-        const cycleDiff = Math.abs(this.lastCycle - this.cycle);
-        // console.assert(cycleDiff == 1|| cycleDiff == 340 || cycleDiff == 339, cycleDiff.toString());
-        
-        let render = this.maskShowBG == 1 || this.maskShowSprites == 1;
-        let preLine = this.scanLine == 261;
-        let visibleLine = this.scanLine < 240;
-        let renderLine = preLine || visibleLine;
-        let preFetchCycle = this.cycle >= 321 && this.cycle <= 336;
-        let visibleCycle = this.cycle >= 1 && this.cycle <= 256;
-        let fetchCycle = preFetchCycle || visibleCycle;
-
-        // background logic
-        if (render) {
-            if (visibleLine && visibleCycle) {
-                this.renderPixel();
-            }
-            if (renderLine && fetchCycle) {
-                this.tileData <<= 4;
-                
-                switch (this.cycle % 8) {
-                    case 1:
-                        this.fetchNameTableByte(); break;
-                    case 3:
-                        this.fetchAttributeTableByte(); break;
-                    case 5:
-                        this.fetchLowTileByte(); break;
-                    case 7:
-                        this.fetchHighTileByte(); break;
-                    case 0:
-                        this.storeTileData(); break;
+            if (passed) {
+                this.cycle++;
+                if (this.cycle > 340) {
+                    this.cycle = 0;
+                    this.scanLine++;
+                    if (this.scanLine > 261) {
+                        this.scanLine = 0;
+                        this.frame++;
+                        this.oddFrame = !this.oddFrame;
                     }
+                }
             }
 
-            if (preLine && this.cycle >= 280 && this.cycle <= 304) {
-                this.copyY();
+            const cycleDiff = Math.abs(this.lastCycle - this.cycle);
+            // console.assert(cycleDiff == 1|| cycleDiff == 340 || cycleDiff == 339, cycleDiff.toString());
+            
+            let render = this.maskShowBG == 1 || this.maskShowSprites == 1;
+            let preLine = this.scanLine == 261;
+            let visibleLine = this.scanLine < 240;
+            let renderLine = preLine || visibleLine;
+            let preFetchCycle = this.cycle >= 321 && this.cycle <= 336;
+            let visibleCycle = this.cycle >= 1 && this.cycle <= 256;
+            let fetchCycle = preFetchCycle || visibleCycle;
+
+            // background logic
+            if (render) {
+                if (visibleLine && visibleCycle) {
+                    this.renderPixel();
+                }
+                if (renderLine && fetchCycle) {
+                    this.tileData <<= 4;
+                    
+                    switch (this.cycle % 8) {
+                        case 1:
+                            this.fetchNameTableByte(); break;
+                        case 3:
+                            this.fetchAttributeTableByte(); break;
+                        case 5:
+                            this.fetchLowTileByte(); break;
+                        case 7:
+                            this.fetchHighTileByte(); break;
+                        case 0:
+                            this.storeTileData(); break;
+                        }
+                }
+
+                if (preLine && this.cycle >= 280 && this.cycle <= 304) {
+                    this.copyY();
+                }
+                
+                if (renderLine) {
+                    if (fetchCycle && this.cycle % 8 == 0) {
+                        this.incrementX();
+                    }
+                    if (this.cycle == 256) {
+                        this.incrementY();
+                    }
+                    if (this.cycle == 257) {
+                        this.copyX();
+                    }
+                }
+            }
+
+            // sprite logic
+            if (render) {
+                if (this.cycle == 257) {
+                    if (visibleLine) {
+                        this.evaluateSprites()
+                    } else {
+                        this.spriteCount = 0
+                    }
+                }
             }
             
-            if (renderLine) {
-                if (fetchCycle && this.cycle % 8 == 0) {
-                    this.incrementX();
-                }
-                if (this.cycle == 256) {
-                    this.incrementY();
-                }
-                if (this.cycle == 257) {
-                    this.copyX();
-                }
+            if (this.scanLine == 241 && this.cycle == 1) {
+                this.setVerticalBlank();              
             }
-        }
 
-        // sprite logic
-        if (render) {
-            if (this.cycle == 257) {
-                if (visibleLine) {
-                    this.evaluateSprites()
-                } else {
-                    this.spriteCount = 0
-                }
+            if (preLine && this.cycle == 1) {
+                this.clearVerticalBlank();                      
+                this.flagZeroHit = 0;
+                this.flagOverflow = 0;
             }
-        }
-        
-        if (this.scanLine == 241 && this.cycle == 1) {
-            this.setVerticalBlank();              
-        }
-
-        if (preLine && this.cycle == 1) {
-            this.clearVerticalBlank();                      
-            this.flagZeroHit = 0;
-            this.flagOverflow = 0;
-        }
-               
+        }  
     }
 
     readStatus(poke: boolean): number {                
