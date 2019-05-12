@@ -51,8 +51,8 @@ export class Memory {
             this.memory[ addr ] = value & 0xFF;
         } else if (addr == 0x4016) {
             this.nes.getController1().write(value);
-        } else if (addr == 0x4017) {
             this.nes.getController2().write(value);
+        } else if (addr == 0x4017) {
         } else {
             this.memory[ addr ] = value; // todo: what???? there's already .ram
         }
