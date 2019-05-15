@@ -69,7 +69,8 @@ export class PPU {
     
     // todo: would be great to wrap these around UintArray8 or maybe provide getter/setter to guard against byte/word bounds
     spriteCount: number = 0;
-    tileData: number = 0;
+    tileData: Uint8Array = new Uint8Array(17);
+    tileIndex: number = 16;
     lowTileByte: number = 0;
     highTileByte: number = 0;
     flagBGTable: number = 0;
@@ -317,7 +318,15 @@ static MirrorLookup:any = [
 
         let background = 0;
         if (this.maskShowBG == 1) {
-            const tileData = (this.tileData >> 32) & 0xFFFFFFFF;
+
+            let bit32 = 0;
+            for (let i = 7; i >= 0; i--) {
+                const idx = (1+this.tileIndex + i) % 16;
+                bit32 |= this.tileData[idx];
+                bit32 <<= 4;
+            }
+
+            const tileData = bit32;
             const data = tileData >> ((7 - this.fineX) * 4);
             background = data & 0xF;
         }
@@ -512,11 +521,11 @@ static MirrorLookup:any = [
             this.lowTileByte &= 0xFF;
             this.highTileByte &= 0xFF;
             
-            data = data << 4;
-            data |= (a | p1 | p2) & 0xFFFFFFFF;
-        }
-        
-        this.tileData = data;         
+            this.tileIndex--;
+            if (this.tileIndex < 0) this.tileIndex = 15;
+            
+            this.tileData[this.tileIndex] = (a | p1 | p2) & 0xFFFFFFFF;            
+        }        
     }
         
     /**
@@ -662,7 +671,8 @@ static MirrorLookup:any = [
                 }
 
                 if (renderLine && fetchCycle) {
-                    this.tileData <<= 4;
+                    this.tileIndex--;
+                    if (this.tileIndex < 0) this.tileIndex = 15;                    
                     
                     switch (this.cycle % 8) {
                         case 1:
@@ -915,7 +925,6 @@ static MirrorLookup:any = [
     }
 
     writeOAMData(value: number): void {
-        console.log('writeo em')
         this.oamData[this.oamAddress] = value & 0xFFFF;
         this.oamAddress++;    
     }
