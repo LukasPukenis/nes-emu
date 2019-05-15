@@ -40,9 +40,9 @@ export class PPU {
     cpu: CPU;
     memory: Memory;
 
-    w: number = 0;       // write toggle
-    v: number = 0;      // current address
-    t: number = 0;      // temp address
+    w: Uint16Array = new Uint16Array(1); // write toggle
+    v: Uint16Array = new Uint16Array(1); // current address
+    t: Uint16Array = new Uint16Array(1); // temp address
     
     bufferedReadValue: number = 0;
     
@@ -71,8 +71,7 @@ export class PPU {
     spriteCount: number = 0;
     tileData: Uint8Array = new Uint8Array(17);
     tileIndex: number = 16;
-    lowTileByte: number = 0;
-    highTileByte: number = 0;
+    tileBytes: Uint8Array = new Uint8Array(2);
     flagBGTable: number = 0;
     attributeTableByte: number = 0;
     nameTableByte: number = 0;
@@ -425,25 +424,25 @@ static MirrorLookup:any = [
     }
 
     copyY() {
-        this.v = (this.v & 0x841F) | (this.t & 0x7BE0)
+        this.v[0] = (this.v[0] & 0x841F) | (this.t[0] & 0x7BE0)
     }
 
     copyX() {
-        this.v = (this.v & 0xFBE0) | (this.t & 0x041F)
+        this.v[0] = (this.v[0] & 0xFBE0) | (this.t[0] & 0x041F)
     }
     
     // this is direct copy paste from: https://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
     incrementX() {        
         // increment hori(v)
         // if coarse X == 31
-        if ((this.v & 0x001F) == 31) {
+        if ((this.v[0] & 0x001F) == 31) {
             // coarse X = 0
-            this.v &= 0xFFE0;
+            this.v[0] &= 0xFFE0;
             // switch horizontal nametable
-            this.v ^= 0x0400;
+            this.v[0] ^= 0x0400;
         } else {
             // increment coarse X            
-            this.v++;            
+            this.v[0]++;            
         }
     }
     
@@ -451,19 +450,19 @@ static MirrorLookup:any = [
     incrementY() {        
         // increment vert(v)
         // if fine Y < 7
-        if ((this.v & 0x7000) != 0x7000) {
+        if ((this.v[0] & 0x7000) != 0x7000) {
             // increment fine Y
-            this.v += 0x1000;
+            this.v[0] += 0x1000;
         } else {
             // fine Y = 0
-            this.v &= 0x8FFF;
+            this.v[0] &= 0x8FFF;
             // let y = coarse Y
-            let y = (this.v & 0x03E0) >> 5;
+            let y = (this.v[0] & 0x03E0) >> 5;
             if (y == 29) {
                 // coarse Y = 0
                 y = 0;
                 // switch vertical nametable
-                this.v ^= 0x0800
+                this.v[0] ^= 0x0800
             } else if (y == 31) {
                 // coarse Y = 0, nametable not switched
                 y = 0;
@@ -472,18 +471,18 @@ static MirrorLookup:any = [
                 y++;
             }
             // put coarse Y back into v
-            this.v = (this.v & 0xFC1F) | (y << 5);
+            this.v[0] = (this.v[0] & 0xFC1F) | (y << 5);
         }
     }
     
     fetchNameTableByte() {
-        const v = this.v;
+        const v = this.v[0];
         const address = 0x2000 | (v & 0x0FFF);
         this.nameTableByte = this.read(address);
     }
     
     fetchAttributeTableByte() {
-        let v = this.v;
+        let v = this.v[0];
         const address = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
         const shift = ((v >> 4) & 4) | (v & 2);
         this.attributeTableByte = 0xFF & (((this.read(address) >> shift) & 3) << 2);
@@ -491,21 +490,21 @@ static MirrorLookup:any = [
     }
     
     fetchLowTileByte() {
-        let fineY = (this.v >> 12) & 7;
+        let fineY = (this.v[0] >> 12) & 7;
         const table = this.controlBackgroundTable;  
         const tile = this.nameTableByte;
-        const address = 0x1000*table + tile*16 + fineY;
-        this.lowTileByte = this.read(address);
-        this.debugInfo.lowByte = this.lowTileByte;
+        const address = 0x1000*table + (0xFFFF & tile)*16 + fineY;
+        this.tileBytes[0] = this.read(address);
+        this.debugInfo.lowByte = this.tileBytes[0];
     }
 
     fetchHighTileByte() {
-        let fineY = (this.v >> 12) & 7;
+        let fineY = (this.v[0] >> 12) & 7;
         const table = this.controlBackgroundTable;
         const tile = this.nameTableByte;
-        const address = 0x1000*table + tile*16 + fineY;
-        this.highTileByte = this.read(address + 8);
-        this.debugInfo.highByte = this.highTileByte;
+        const address = 0x1000*table + (0xFFFF & tile)*16 + fineY;
+        this.tileBytes[1] = this.read(address + 8);
+        this.debugInfo.highByte = this.tileBytes[1];
     }
 
     storeTileData() {
@@ -513,13 +512,13 @@ static MirrorLookup:any = [
         const a = this.attributeTableByte & 0xFF;
 
         for (let i = 0; i < 8; i++) {            
-            const p1 = (this.lowTileByte & 0x80) >> 7;
-            const p2 = (this.highTileByte & 0x80) >> 6;
-            this.lowTileByte <<= 1;
-            this.highTileByte <<= 1;
+            const p1 = (this.tileBytes[0] & 0x80) >> 7;
+            const p2 = (this.tileBytes[1] & 0x80) >> 6;
+            this.tileBytes[0] <<= 1;
+            this.tileBytes[1] <<= 1;
 
-            this.lowTileByte &= 0xFF;
-            this.highTileByte &= 0xFF;
+            this.tileBytes[0] &= 0xFF;
+            this.tileBytes[1] &= 0xFF;
             
             this.tileIndex--;
             if (this.tileIndex < 0) this.tileIndex = 15;
@@ -743,7 +742,7 @@ static MirrorLookup:any = [
         if (!poke) {
             this.v_blank = false;
             this.nmiChange();
-            this.w = 0;
+            this.w[0] = 0;
         }
 
                 
@@ -752,19 +751,19 @@ static MirrorLookup:any = [
 
     writeScroll(value: any) {
 
-        if (this.w == 0) {
+        if (this.w[0] == 0) {
             // t: ....... ...HGFED = d: HGFED...
             // x:              CBA = d: .....CBA
             // w:                  = 1            
-            this.t = (this.t & 0xFFE0) | ((value & 0xFFFF) >> 3)
+            this.t[0] = (this.t[0] & 0xFFE0) | ((value & 0xFFFF) >> 3)
             this.fineX = value & 0x07;
-            this.w = 1;
+            this.w[0] = 1;
         } else {
             // t: CBA..HG FED..... = d: HGFEDCBA
             // w:                  = 0
-            this.t = (this.t & 0x8FFF) | (((value & 0xFFFF) & 0x07) << 12); // CBA part
-            this.t = (this.t & 0xFC1F) | (((value & 0xFFFF) & 0xF8) << 2);  // HGFED part
-            this.w = 0;            
+            this.t[0] = (this.t[0] & 0x8FFF) | (((value & 0xFF) & 0x07) << 12); // CBA part
+            this.t[0] = (this.t[0] & 0xFC1F) | (((value & 0xFFFF) & 0xF8) << 2);  // HGFED part
+            this.w[0] = 0;            
         }
     }
 
@@ -845,22 +844,22 @@ static MirrorLookup:any = [
     }
 
     writeToAddress(value: number): void {        
-        this.write(this.v, value);
-        this.v += this.controlIncrement ? 32 : 1;
+        this.write(this.v[0], value);
+        this.v[0] += this.controlIncrement ? 32 : 1;
     }
 
     readFromAddress(poke: boolean): number {
-        let t = this.read(this.v);
+        let t = this.read(this.v[0]);
 
-        if (( this.v % 0x4000) <= 0x3EFF) {
+        if (( this.v[0] % 0x4000) <= 0x3EFF) {
             let buf = this.bufferedReadValue;
             this.bufferedReadValue = t;
             t = buf;
         } else {
-            this.bufferedReadValue = this.read(this.v - 0x1000);
+            this.bufferedReadValue = this.read(this.v[0] - 0x1000);
         }
 
-        this.v += this.controlIncrement ? 32 : 1;
+        this.v[0] += this.controlIncrement ? 32 : 1;
 
         return t;
     }
@@ -868,19 +867,19 @@ static MirrorLookup:any = [
     writeAddress(value: number): void {
         value &= 0xFF;
 
-        if (this.w == 0) {
+        if (this.w[0] == 0) {
             // t: .FEDCBA ........ = d: ..FEDCBA
             // t: X...... ........ = 0
             // w:                  = 1
-            this.t = (this.t & 0x80ff) | ((value & 0x3F) << 8);
-            this.w = 1;
+            this.t[0] = (this.t[0] & 0x80ff) | ((value & 0x3F) << 8);
+            this.w[0] = 1;
         } else {
             // t: ....... HGFEDCBA = d: HGFEDCBA
             // v                   = t
             // w:                  = 0
-            this.t = (this.t & 0xFF00) | value;
-            this.v = this.t;
-            this.w = 0;
+            this.t[0] = (this.t[0] & 0xFF00) | (0xFFFF & value);
+            this.v[0] = this.t[0];
+            this.w[0] = 0;
         } 
     }
     
@@ -907,7 +906,7 @@ static MirrorLookup:any = [
         this.controlMasterSlave =     ((value >> 6) & 1);
         this.generateNMI =            ((value >> 7) & 1) == 1;
         
-        this.t = 0xFFFF & ((this.t & 0xF3FF) | ((value & 0xFF) & 0x03) << 10);
+        this.t[0] = ((this.t[0] & 0xF3FF) | ((value & 0xFFFF) & 0x03) << 10);
         this.nmiChange();
     }
     
