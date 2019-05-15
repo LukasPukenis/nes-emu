@@ -69,7 +69,7 @@ export class PPU {
     
     // todo: would be great to wrap these around UintArray8 or maybe provide getter/setter to guard against byte/word bounds
     spriteCount: number = 0;
-    tileData: Uint8Array = new Uint8Array(17);
+    tileData: Uint32Array = new Uint32Array(2);
     tileIndex: number = 16;
     tileBytes: Uint8Array = new Uint8Array(2);
     flagBGTable: number = 0;
@@ -247,7 +247,7 @@ static MirrorLookup:any = [
         let a = (attributes & 3) << 2;
         let lowTileByte = this.read(address);
         let highTileByte = this.read(address + 8);
-        let data = 0;
+        let data: Uint32Array = new Uint32Array(1);
 
         for (let i = 0; i < 8; i++) {
             var p1, p2;
@@ -264,10 +264,10 @@ static MirrorLookup:any = [
                 highTileByte <<= 1;
             }
 
-            data <<= 4;
-            data |= (a | p1 | p2) & 0xFFFFFFFF;
+            data[0] <<= 4;
+            data[0] |= (a | p1 | p2) & 0xFFFFFFFF;
         }
-        return data
+        return data[0]
     }
     
     evaluateSprites() {
@@ -290,7 +290,7 @@ static MirrorLookup:any = [
             }
 
             if (count < 8) {
-                this.spritePatterns[count] = this.fetchSpritePattern(i, row);
+                this.spritePatterns[count] = 0xFFFFFFFF & this.fetchSpritePattern(i, row);
                 this.spritePositions[count] = x;
                 this.spritePriorities[count] = (a >> 5) & 1;
                 this.spriteIndexes[count] = i & 0xFF;
@@ -317,15 +317,8 @@ static MirrorLookup:any = [
 
         let background = 0;
         if (this.maskShowBG == 1) {
-
-            let bit32 = 0;
-            for (let i = 7; i >= 0; i--) {
-                const idx = (1+this.tileIndex + i) % 16;
-                bit32 |= this.tileData[idx];
-                bit32 <<= 4;
-            }
-
-            const tileData = bit32;
+            
+            const tileData = this.tileData[1];
             const data = tileData >> ((7 - this.fineX) * 4);
             background = data & 0xF;
         }
@@ -520,11 +513,12 @@ static MirrorLookup:any = [
             this.tileBytes[0] &= 0xFF;
             this.tileBytes[1] &= 0xFF;
             
-            this.tileIndex--;
-            if (this.tileIndex < 0) this.tileIndex = 15;
             
-            this.tileData[this.tileIndex] = (a | p1 | p2) & 0xFFFFFFFF;            
+            data <<= 4;
+            data |= (a | p1 | p2) & 0xFFFFFFFF;            
         }        
+
+        this.tileData[0] = data;
     }
         
     /**
@@ -670,8 +664,8 @@ static MirrorLookup:any = [
                 }
 
                 if (renderLine && fetchCycle) {
-                    this.tileIndex--;
-                    if (this.tileIndex < 0) this.tileIndex = 15;                    
+                    this.tileData[1] = (this.tileData[1] << 4) | ((this.tileData[0] >> 28) & 0xF);
+                    this.tileData[0] = this.tileData[0] << 4;
                     
                     switch (this.cycle % 8) {
                         case 1:
