@@ -11,6 +11,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/jest": "^23.3.10",
+    "@types/node": "^10.14.5",
     "babel-jest": "^23.6.0",
     "fork-ts-checker-webpack-plugin": "^0.4.14",
     "happypack": "^5.0.0",
@@ -23,7 +24,6 @@
   },
   "dependencies": {
     "@types/lodash": "^4.14.118",
-    "@types/node": "^10.12.18",
     "fetch": "^1.1.0",
     "fsevents": "^2.0.1",
     "isomorphic-fetch": "^2.2.1",

@@ -4,6 +4,8 @@ import { Utils } from "./utils";
 import { Mapper } from "./mappers/mapper";
 import { Memory } from "./memory";
 
+const DEBUG_OAM = false; // makes a blinking pixel on the top left corner of a sprite
+const DEBUG_SPRITES = false; // draws sprites in a single color(whole 8x8 or 8x16)
 /**
  * Abbreviations used:
  * OAM - Object Attribute Memory, 64 entries, 4 bytes each
@@ -38,7 +40,7 @@ export class PPU {
     cpu: CPU;
     memory: Memory;
 
-    w: boolean = false; // write toggle
+    w: number = 0;       // write toggle
     v: number = 0;      // current address
     t: number = 0;      // temp address
     
@@ -168,6 +170,26 @@ export class PPU {
         }
     }
     
+
+static MirrorLookup:any = [
+	[0, 0, 1, 1],
+	[0, 1, 0, 1],
+	[0, 0, 0, 0],
+	[1, 1, 1, 1],
+	[0, 1, 2, 3]
+]
+
+ MirrorAddress(mode: number, address: number): number {
+	address = (address - 0x2000) % 0x1000;
+	let table = Math.trunc(address / 0x0400);
+    let offset = address % 0x0400;
+	const finalAddr = 0x2000 + PPU.MirrorLookup[mode][table]*0x0400 + offset;
+    // console.log(finalAddr);
+    // if (isNaN(finalAddr)) debugger
+    return finalAddr;
+}
+
+
     // mirror table literally holds the address it's mirrored to
     setMirror(from: number, to: number, size: number) {
         for (let i = 0; i < size; i++)
@@ -178,7 +200,7 @@ export class PPU {
         let nmi = this.generateNMI && this.v_blank;
 
         if (nmi && !this.nmiPrevious)
-            this.nmiDelay = 15;
+            this.nmiDelay = 5;
             
         this.nmiPrevious = nmi;
     }
@@ -198,11 +220,7 @@ export class PPU {
         
         this.paletteData[address] = value & 0xFF;
     }
-        
-    fetchTileData() {
-        return (this.tileData >> 32) & 0xFFFFFFFF;
-    }
-    
+            
     fetchSpritePattern(i: number, row: number): number {
         let tile = this.oamData[i*4+1];
         const attributes = this.oamData[i*4+2];
@@ -288,49 +306,17 @@ export class PPU {
         this.spriteCount = count;
     }
 
-    spritePixel() {        
-        if (this.maskShowSprites == 0) {
-            return [0, 0];
-        }
-
-        for (let i = 0; i < this.spriteCount; i++) {
-            let offset = (this.cycle - 1) - this.spritePositions[i];
-            if (offset < 0 || offset > 7) {
-                continue;
-            }
-
-            offset = 7 - offset;
-            const color = 0xFF & (this.spritePatterns[i] >> (((offset*4) & 0xFF)) & 0x0F);
-            if (color % 4 == 0) {
-                continue;
-            }
-
-            return [i & 0xFF, color];
-        }
-
-        return [0, 0];
-    }
-
-    backgroundPixel() {
-        if (this.maskShowBG == 0) {
-            return 0;
-        }
-        
-        const data = this.fetchTileData() >> ((7 - this.fineX) * 4);
-        return data & 0x0F;
-    }
-    
     renderPixel() {
         const x = this.cycle - 1;
         const y = this.scanLine;
-                        
+                       
         // if (window.hasOwnProperty("TEST")) // todo: slowwwwww
         //     return;            
         
         // let background = this.backgroundPixel()
 
         let background = 0;
-        if (this.maskShowBG != 0) {
+        if (this.maskShowBG == 1) {
             const tileData = (this.tileData >> 32) & 0xFFFFFFFF;
             const data = tileData >> ((7 - this.fineX) * 4);
             background = data & 0xF;
@@ -340,30 +326,43 @@ export class PPU {
         let idx = 0;
         let sprite = 0;
 
+        // we do a check to see if a sprite is nearby this pixel and if so
+        // we need to calculate offset for the pixel in sprite
         if (this.maskShowSprites == 1) {
             for (let i = 0; i < this.spriteCount; i++) {
                 let offset = (this.cycle - 1) - this.spritePositions[i];
+                // sprite is not in this 8pixels region
                 if (offset < 0 || offset > 7) {
                     continue;
                 }
     
                 offset = 7 - offset;
-                const color = 0xFF & (this.spritePatterns[i] >> (((offset*4) & 0xFF)) & 0x0F);
-                if (color % 4 == 0) {
+                const a = (offset*4) & 0xFF;
+                let b = this.spritePatterns[i] >> a;
+
+                if (DEBUG_SPRITES)
+                    b = i+1;
+                
+                const color = b & 0x0F;
+
+                if (color % 4 == 0 && !DEBUG_SPRITES) {
                     continue;
                 }
     
-                idx = i & 0xFF;
+                idx = i;
                 sprite = color;
+                break;
             }
         }
 
         if (x < 8 && this.maskShowLeftBG == 0) {
             background = 0;
         }
+        
         if (x < 8 && this.maskShowLeftSprites == 0) {
             sprite = 0;
         }
+
         const b = background % 4 != 0;
         const s = sprite % 4 != 0;
         var color = 0;
@@ -375,6 +374,7 @@ export class PPU {
         } else if (b && !s) {
             color = background;
         } else {
+            // both background and sprite pixels are here a collision so to speak
             if (this.spriteIndexes[idx] == 0 && x < 255) {
                 this.flagZeroHit = 1;
             }
@@ -384,7 +384,6 @@ export class PPU {
                 color = background;
             }
         }        
-
 
         // if (!this.debugInfo.data[y])
         //   this.debugInfo.data[y] = [];
@@ -425,7 +424,7 @@ export class PPU {
     }
     
     // this is direct copy paste from: https://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
-    incrementX() {
+    incrementX() {        
         // increment hori(v)
         // if coarse X == 31
         if ((this.v & 0x001F) == 31) {
@@ -440,7 +439,7 @@ export class PPU {
     }
     
     // this is direct copy paste from: https://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
-    incrementY() {
+    incrementY() {        
         // increment vert(v)
         // if fine Y < 7
         if ((this.v & 0x7000) != 0x7000) {
@@ -472,12 +471,6 @@ export class PPU {
         const v = this.v;
         const address = 0x2000 | (v & 0x0FFF);
         this.nameTableByte = this.read(address);
-        
-        if (this.nameTableByte == 0xF0) {
-            this.nameTableByte = 0x24;
-        } else if (this.nameTableByte == 0xF1) {
-            this.nameTableByte = 0x24;
-        }        
     }
     
     fetchAttributeTableByte() {
@@ -490,9 +483,7 @@ export class PPU {
     
     fetchLowTileByte() {
         let fineY = (this.v >> 12) & 7;
-        const table = this.controlBackgroundTable;
-        console.assert(table < 2);
-        
+        const table = this.controlBackgroundTable;  
         const tile = this.nameTableByte;
         const address = 0x1000*table + tile*16 + fineY;
         this.lowTileByte = this.read(address);
@@ -503,8 +494,6 @@ export class PPU {
         let fineY = (this.v >> 12) & 7;
         const table = this.controlBackgroundTable;
         const tile = this.nameTableByte;
-        // if (tile == 0x0C) debugger
-
         const address = 0x1000*table + tile*16 + fineY;
         this.highTileByte = this.read(address + 8);
         this.debugInfo.highByte = this.highTileByte;
@@ -527,181 +516,9 @@ export class PPU {
             data |= (a | p1 | p2) & 0xFFFFFFFF;
         }
         
-        this.tileData |= data;         
+        this.tileData = data;         
     }
-
-    tick() {        
-        if (this.nmiDelay > 0) {
-            this.nmiDelay--;
-            if (this.nmiDelay == 0 && this.v_blank && this.generateNMI) {
-                // console.log('nmi');
-                this.cpu.triggerNMI();
-            }
-        }
-
-        if (this.maskShowBG == 1 || this.maskShowSprites == 1) {
-            if (this.oddFrame && this.scanLine == 261 && this.cycle == 339) {
-                this.cycle = 0;
-                this.scanLine = 0;
-                this.frame++;
-                this.oddFrame = !this.oddFrame;
-                return;
-            }
-        }
-
-        this.cycle++;
-        if (this.cycle > 340) {
-            this.cycle = 0;
-            this.scanLine++;
-            if (this.scanLine > 261) {
-                this.scanLine = 0;
-                this.frame++;
-                this.oddFrame = !this.oddFrame;
-            }
-        }
-    }
-
-    directRenderBG() {
-        let baseNameTable: number;
-        switch(this.controlNameTable) {
-            case 0:
-                baseNameTable = 0x2000; break;
-            case 1:
-                baseNameTable = 0x2400; break;
-            case 2:
-                baseNameTable = 0x2800; break;
-            case 3:
-                baseNameTable = 0x2C00; break
-        }
-
-        let backgroundBase: number;
-        switch (this.controlBackgroundTable) {
-            case 0: 
-                backgroundBase = 0x0000; break;
-            case 1:
-                backgroundBase = 0x1000; break;
-        }
-
-        for (let j = 0; j < 30; j++) {
-            for (let i = 0; i < 32; i++) {
-                let pixelIdx = (j*256*8 + i*8) * 4 ;                                                
-
-                // todo: backgroundbase neklauso, reik rankom pridet 0x100
-                let index = baseNameTable + (j << 5) + i;
-                
-                let spriteIndex = this.read(index);
-
-                for (let n = 0; n < 8; n++) {
-                    let line0 = this.read(backgroundBase+(spriteIndex*16)+n + 0);
-                    let line1 = this.read(backgroundBase+(spriteIndex*16)+n + 8);
-
-                    for (let m = 0; m < 8; m++) {
-                        let reduct = 7 - m;
-                        let val0 = (line0 >> reduct) & 1;
-                        let val1 = (line1 >> reduct) & 1;                        
-                        let finalVal = val0 | (val1 << 1);
-                                            
-                        let palletteByte = this.read(0x23C0 + (j % 2 * 32) + (i % 2));
-                        let bits = 0;
-
-                        if (i % 2 == 0 && j % 2 == 0) {
-                            // top left corner case
-                            bits = (palletteByte >> 0 ) & 3;
-                        } else if (i % 2 == 1 && j % 2 == 0) {
-                            // top right corner case
-                            bits = (palletteByte >> 2 ) & 3;
-                        } else if (i % 2 == 0 && j % 2 == 1) {
-                            // bottom left corner case
-                            bits = (palletteByte >> 4 ) & 3;
-                        } else if (i % 2 == 1 && j % 2 == 1) {
-                            // bottom right corner case
-                            bits = (palletteByte >> 6 ) & 3;
-                        }
-                        
-
-                        let pixelOffset = (n * 256 + m) * 4;
-                        let finalPixelIdx = pixelIdx + pixelOffset;
-
-                        this.pixels[finalPixelIdx + 0] = finalVal * 50;
-                        this.pixels[finalPixelIdx + 1] = finalVal * 50;
-                        this.pixels[finalPixelIdx + 2] = finalVal * 50;
-                        this.pixels[finalPixelIdx + 3] = 0xff;                        
-                    }                    
-                }                
-            }
-        }
-    }
-
-    directRenderSprites() {
-        let baseNameTable: number;
-        switch(this.controlNameTable) {
-            case 0:
-                baseNameTable = 0x2000; break;
-            case 1:
-                baseNameTable = 0x2400; break;
-            case 2:
-                baseNameTable = 0x2800; break;
-            case 3:
-                baseNameTable = 0x2C00; break
-        }
-
-        let backgroundBase: number;
-        switch (this.controlBackgroundTable) {
-            case 0: 
-                backgroundBase = 0x0000; break;
-            case 1:
-                backgroundBase = 0x1000; break;
-        }
-
-        let spriteBase: number;
-        switch (this.controlSpriteTable) {
-            case 0: 
-                spriteBase = 0x0000; break;
-            case 1:
-                spriteBase = 0x1000; break;
-        }
-
-        const oam = this.oamData;
-        for (let i = 0; i < 64; i++) {
-            const idx = i*4;
-            const y = oam[idx + 0];
-            const sprite = spriteBase + oam[idx + 1];
-            
-            const attr = oam[idx + 2];
-            const x = oam[idx + 3];
-            
-            // console.log(`sprite ${sprite} @ ${x}x${y}`);
-
-            const pixelIdx = (y*256 + x) * 4;
-
-            for (let n = 0; n < 8; n++) {
-                const line0 = this.read((sprite*16)+n + 0);
-                const line1 = this.read((sprite*16)+n + 8);
-                
-                for (let m = 0; m < 8; m++) {
-                    const reduct = 7 - m;
-                    const val0 = (line0 >> reduct) & 1;
-                    const val1 = (line1 >> reduct) & 1;
-                    const finalVal = val0 | (val1 << 1);
-                    
-                    const pixelOffset = (n * 256 + m) * 4;
-                    const finalPixelIdx = pixelIdx + pixelOffset;
-
-                    this.pixels[finalPixelIdx + 0] = finalVal * 50;
-                    this.pixels[finalPixelIdx + 1] = finalVal * 50;
-                    this.pixels[finalPixelIdx + 2] = finalVal * 50;
-                    this.pixels[finalPixelIdx + 3] = 0xff;
-                }
-            }        
-        }
-    }
-
-    directRender() {
-        throw new Error("Direct rendering is not used anymore");
-        this.directRenderBG();
-        this.directRenderSprites();
-    }
-
+        
     /**
      * Sprites live at 0x0000 and 0x1000 addresses. Each sprite occupies 16 bytes
      * Each 16 bytes is actually two halfs of 8bytes, they must be combined to produce the final colour index
@@ -769,8 +586,22 @@ export class PPU {
         // if (window.hasOwnProperty('TEST'))
         //     return;
         
-        this.canvas.putImageData(this.imageData, 0, 0);
+        if (DEBUG_OAM) {
+            for(let i = 0; i < this.oamData.length; i+=4) {
+                const y = this.oamData[i];
+                const x = this.oamData[i+3];
+                // if (this.oamData[i+1] != 0)
+                //     console.log(i / 4, '=>', this.oamData[i+1].toString(16), '->', x, y);
+                const offset = (y*256+x) * 4;
+                let val = 100 + Math.random() * 156;
+                this.pixels[offset + 0] = val;
+                this.pixels[offset + 1] = val;
+                this.pixels[offset + 2] = val;
+                this.pixels[offset + 3] = 0xFF;                
+            }
+        }
 
+        this.canvas.putImageData(this.imageData, 0, 0);
         // this.debugRenderSprites();
         // this.debugCanvas.putImageData(this.debugImageData, 0, 0);        
     }
@@ -779,7 +610,6 @@ export class PPU {
         for (let i = 0; i < times; i++) {
             
             this.lastCycle = this.cycle;
-            
             
             // this.tick();
             if (this.nmiDelay > 0) {
@@ -790,18 +620,18 @@ export class PPU {
                 }
             }
 
-            let passed = true;
+            let reseted = false;
             if (this.maskShowBG == 1 || this.maskShowSprites == 1) {
                 if (this.oddFrame && this.scanLine == 261 && this.cycle == 339) {
                     this.cycle = 0;
                     this.scanLine = 0;
                     this.frame++;
                     this.oddFrame = !this.oddFrame;
-                    passed = false;
+                    reseted = true;
                 }
             }
 
-            if (passed) {
+            if (!reseted) {
                 this.cycle++;
                 if (this.cycle > 340) {
                     this.cycle = 0;
@@ -830,6 +660,7 @@ export class PPU {
                 if (visibleLine && visibleCycle) {
                     this.renderPixel();
                 }
+
                 if (renderLine && fetchCycle) {
                     this.tileData <<= 4;
                     
@@ -844,7 +675,7 @@ export class PPU {
                             this.fetchHighTileByte(); break;
                         case 0:
                             this.storeTileData(); break;
-                        }
+                    }
                 }
 
                 if (preLine && this.cycle >= 280 && this.cycle <= 304) {
@@ -852,7 +683,7 @@ export class PPU {
                 }
                 
                 if (renderLine) {
-                    if (fetchCycle && this.cycle % 8 == 0) {
+                    if (fetchCycle && (this.cycle % 8 == 0)) {
                         this.incrementX();
                     }
                     if (this.cycle == 256) {
@@ -902,7 +733,7 @@ export class PPU {
         if (!poke) {
             this.v_blank = false;
             this.nmiChange();
-            this.w = false;
+            this.w = 0;
         }
 
                 
@@ -910,20 +741,21 @@ export class PPU {
     }    
 
     writeScroll(value: any) {
-        if (this.w) {       
-            // t: CBA..HG FED..... = d: HGFEDCBA
-            // w:                  = 0
-            this.t = (this.t & 0x8FFF) | (((value & 0xFF) & 0x07) << 12); // CBA part
-            this.t = (this.t & 0xFC1F) | (((value & 0xFF) & 0xF8) << 2);  // HGFED part
-        } else {
+
+        if (this.w == 0) {
             // t: ....... ...HGFED = d: HGFED...
             // x:              CBA = d: .....CBA
             // w:                  = 1            
-            this.t = (this.t & 0xFFE0) | ((value & 0xFF) >> 3)
+            this.t = (this.t & 0xFFE0) | ((value & 0xFFFF) >> 3)
             this.fineX = value & 0x07;
+            this.w = 1;
+        } else {
+            // t: CBA..HG FED..... = d: HGFEDCBA
+            // w:                  = 0
+            this.t = (this.t & 0x8FFF) | (((value & 0xFFFF) & 0x07) << 12); // CBA part
+            this.t = (this.t & 0xFC1F) | (((value & 0xFFFF) & 0xF8) << 2);  // HGFED part
+            this.w = 0;            
         }
-
-        this.w = !this.w;
     }
 
     writeRegister(addr: number, value: number): void {
@@ -979,7 +811,8 @@ export class PPU {
             // console.log("from ", addr.toString(16), '->', x.toString(16));
             return x;
         } else if (addr < 0x3F00) {
-            return this.vram[addr] & 0xFF; // todo: mirror  , probably cia bugas del lode runnerio crasho, nes mirrorinimas neveikia, tai cia vejus nuskaito ir undefined gaunas      
+            let mode = this.nes.getROM().getMirror();
+            return this.vram[ this.MirrorAddress(mode, addr) % 2048] & 0xFF; // todo: mirror  , probably cia bugas del lode runnerio crasho, nes mirrorinimas neveikia, tai cia vejus nuskaito ir undefined gaunas      
         } else if (addr < 0x4000) {
             return this.readPalette(addr % 32);
         } else {
@@ -994,7 +827,8 @@ export class PPU {
             // throw new Error("Cant write to mapper! yet");
             // this.nes.getMapper().write(addr, value, poke);
         } else if (addr < 0x3F00) {
-            this.vram[addr] = value; // todo: mirroring
+            let mode = this.nes.getROM().getMirror();
+            this.vram[ this.MirrorAddress(mode, addr) % 2048] = value; // todo: mirroring
         } else if (addr < 0x4000) {
             this.writePalette(addr % 32, value);
         }
@@ -1008,7 +842,7 @@ export class PPU {
     readFromAddress(poke: boolean): number {
         let t = this.read(this.v);
 
-        if (this.v % 0x4000 <= 0x3EFF) {
+        if (( this.v % 0x4000) <= 0x3EFF) {
             let buf = this.bufferedReadValue;
             this.bufferedReadValue = t;
             t = buf;
@@ -1018,27 +852,26 @@ export class PPU {
 
         this.v += this.controlIncrement ? 32 : 1;
 
-        if (t == undefined) debugger
         return t;
     }
 
     writeAddress(value: number): void {
         value &= 0xFF;
 
-        if (!this.w) {
+        if (this.w == 0) {
             // t: .FEDCBA ........ = d: ..FEDCBA
             // t: X...... ........ = 0
             // w:                  = 1
             this.t = (this.t & 0x80ff) | ((value & 0x3F) << 8);
+            this.w = 1;
         } else {
             // t: ....... HGFEDCBA = d: HGFEDCBA
             // v                   = t
             // w:                  = 0
             this.t = (this.t & 0xFF00) | value;
             this.v = this.t;
+            this.w = 0;
         } 
-
-        this.w = !this.w;
     }
     
     setVerticalBlank() {
@@ -1070,11 +903,11 @@ export class PPU {
     
     writeMask(value: number): void {
         // console.log('write mask', value.toString(2));
-        this.maskGrayscale = (value & 1);
-        this.maskShowBG = (value >> 3);
-        this.maskShowSprites = (value >> 4);
-        this.maskShowLeftBG = (value >> 1);
-        this.maskShowLeftSprites = (value >> 2);
+        this.maskGrayscale = (value & 1) & 1;
+        this.maskShowBG = (value >> 3) & 1;
+        this.maskShowSprites = (value >> 4) & 1;
+        this.maskShowLeftBG = (value >> 1) & 1;
+        this.maskShowLeftSprites = (value >> 2) & 1;
     }
 
     writeOAMAddress(value: number): void {
@@ -1082,18 +915,19 @@ export class PPU {
     }
 
     writeOAMData(value: number): void {
+        console.log('writeo em')
         this.oamData[this.oamAddress] = value & 0xFFFF;
         this.oamAddress++;    
     }
 
-    writeDMA(value: number): void {        
+    writeDMA(value: number): void {     
         let cpu = this.cpu;
         let memory = this.memory;
 
         let addr = value << 8;
         for (let i = 0; i < 256; i++) {
             let val = memory.read(addr);
-            this.oamData[this.oamAddress] = memory.read(addr);
+            this.oamData[this.oamAddress] = val;
             this.oamAddress++;
             addr++;
         }

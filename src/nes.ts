@@ -26,12 +26,6 @@ export class NES {
     
 
     constructor(canvas: HTMLCanvasElement, debugCanvas: HTMLCanvasElement = null) {        
-        setTimeout(() => {
-            console.log("*** FINISHED running***");
-            // @ts-ignore
-            window.finished = true;
-        }, 3000);
-
         // @ts-ignore
         if (!window.hasOwnProperty('TEST'))
             console.assert(canvas);
@@ -123,16 +117,21 @@ export class NES {
         this.lastTime = currTime;
 
         // fuse for not hogging CPU 100%
-        let _dt = dt < 0.3 ? dt : 0;
+        let _dt = dt < 0.15 ? dt : 0.00;
+        // _dt = dt;
         // console.log(_dt);
 
         let cyclesToRun = _dt * CPU_FREQ;
         // console.log('cyclesToRun:', Math.round(cyclesToRun));
         
-        while (cyclesToRun > 0) {
-            // @ts-ignore
-            if (window.finished) return;
+        // console.log('*', cyclesToRun);
 
+        while (cyclesToRun > 0) {
+            if (this.totalCycles >= CPU_FREQ*100) {
+                console.log("FUSE'D")
+                break;
+            }
+            
             let cpuCyclesUsed = this.cpu.step();                        
             cyclesToRun -= cpuCyclesUsed;
             

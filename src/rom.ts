@@ -62,6 +62,8 @@ export class ROM {
         this.header.chrRomCnt = this.data[CHR_ROM_COUNT];
         this.header.mirror = this.data[FLAG6] & 1;
 
+        console.log("Mirror bit", this.header.mirror);
+        
         for (let i = 0; i < this.header.prgRomCnt; i++)            
             this.prgroms.push(this.data.slice(16 + i*0x4000, (i+1)*0x4000+16));
 

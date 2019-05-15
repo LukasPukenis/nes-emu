@@ -1,14 +1,20 @@
 import { NES } from './nes';
 import { BUTTON, BUTTONS } from './controller';
 
-console.log('yey')
-const path = './roms/official/DonkeyKong.nes';
-// const path = './roms/official/BalloonFight.nes';
-// const path = './roms/official/LodeRunner.nes';
+// const path = './roms/official/DonkeyKong.nes'; // mirror: 0
+const path = './roms/official/BalloonFight.nes'; // mirror: 0
 
+// const path = './roms/official/LodeRunner.nes'; // mirror: 0
+// const path = './roms/official/smb.nes'; // mirror: 1
+
+// const path = './roms/official/Pinball.nes'; // mirror: 0
 // const path = './roms/bkg.nes';
-// // const path = './roms/ppu/01-vbl_basics.nes';
-// // const path = './roms/nestest.nes';
+// const path = './tests/blaarg/ppu/01-vbl_basics.nes';
+// const path = './tests/blaarg/ppu/02-vbl_set_time.nes';
+// const path = './roms/nestest.nes';
+
+// @ts-ignore
+// window.DEBUG_CPU = true;
 
 let nes = new NES(
     document.getElementById('canvas') as HTMLCanvasElement,
@@ -17,8 +23,8 @@ let nes = new NES(
 let buttons: BUTTONS = {};
 buttons[BUTTON.A] = false;
 buttons[BUTTON.B] = false;
-buttons[BUTTON.Start] = false;
 buttons[BUTTON.Select] = false;
+buttons[BUTTON.Start] = false;
 buttons[BUTTON.Up] = false;
 buttons[BUTTON.Down] = false;
 buttons[BUTTON.Left] = false;

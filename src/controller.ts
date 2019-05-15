@@ -29,18 +29,19 @@ export class Controller {
     read(): number {
         let button: number = 0;
 
-        if (this.index < 8 && this.buttons[this.index])
+        if ((this.index < 8 && this.buttons[this.index]) || this.index >= 8)
             button = 1;        
 
         this.index++;
-        if ((this.strobe & 1) == 1)
-            this.index = 0;
 
+        if ((this.strobe & 1) == 1) {
+            this.index = 0;
+        }
+    
         return button;
     }
 
     setButtons(buttons: BUTTONS) {
-        console.log('set', buttons);
         this.buttons = buttons;
     }
 }

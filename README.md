@@ -9,10 +9,12 @@ I refactored a lot of CPU code.
 
 
 ----------- TODO --------------
+[ ] - Sprite positions are wrong
+[ ] - memory mirroring on PPU so Donkey Kong would work
+[ ] - controller doesnt work on Balloon fight(probably on others too, works on Lode Runner)
+
 [x] - add official rom tests just add to gitignore to avoid legal issues
-[ ] - Check all the info - PRGROM and CHRROM as this caused major headache with tests
-[ ] - given a test input sequence with timings(based on cpu cycles executed) compare CPU and PPU data
-[ ] - donkey kong logo is improper
-[ ] - donkey kong nametables are improper
-[ ] - bkg.nes tiles are wrong but controller works
-[ ] - balloon fight title is good but the controller doesn't work
+[ ] - given a test input sequence with timings(based on cpu cycles executed) compare CPU and PPU data. This could be done by taking an existing emulator, breakpointing on specific cycle and saving the state
+[ ] - Lode Runner scrolling has weird effects
+
+[ ] - variable delta for frame skipping instead of a constant

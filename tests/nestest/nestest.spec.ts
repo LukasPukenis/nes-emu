@@ -3,7 +3,6 @@ import { NES } from '../../src/nes';
 
 declare var __dirname: any;
 
-
 test("nestest.nes rom", async () => {
     const dirname = '';//__dirname;
 

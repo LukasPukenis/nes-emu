@@ -3,4 +3,5 @@ global.Response = Response;
 global.Request = Request;
 global.Headers = Headers;
 global.fetch = fetch;
-global.DEBUG = true;
+global.TEST = true;
+global.DEBUG_CPU = false;

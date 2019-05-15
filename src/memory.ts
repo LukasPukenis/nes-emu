@@ -27,9 +27,13 @@ export class Memory {
             // throw new Error("APU memory access not implemented");
             return this.memory[ addr ] & 0xFF;
         } else if (addr == 0x4016) { 
-            return this.nes.getController1().read();
+            const re = this.nes.getController1().read();
+            if (re == 1) console.log('read #1', re)
+            return re;
         } else if (addr == 0x4017) {
-            return this.nes.getController2().read();
+            const re = this.nes.getController2().read();
+            if (re == 1) console.log('read #2', re)
+            return re;
         } else {
             return this.memory[ addr ] & 0xFF; // mapper ram
         }
