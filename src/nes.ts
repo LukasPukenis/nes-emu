@@ -127,7 +127,7 @@ export class NES {
         // console.log('*', cyclesToRun);
 
         while (cyclesToRun > 0) {
-            if (this.totalCycles >= CPU_FREQ*100) {
+            if (this.totalCycles >= CPU_FREQ*100 && false) {
                 console.log("FUSE'D")
                 break;
             }

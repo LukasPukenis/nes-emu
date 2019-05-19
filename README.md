@@ -9,12 +9,15 @@ I refactored a lot of CPU code.
 
 
 ----------- TODO --------------
-[ ] - Sprite positions are wrong
-[ ] - memory mirroring on PPU so Donkey Kong would work
-[ ] - controller doesnt work on Balloon fight(probably on others too, works on Lode Runner)
+So this emulator is has working CPU, UNROM mapper and PPU or it seems so. 
+It runs bomberman and Lode Runner perfectly, totally fails to run SMB or ice climbers
+it somehow doesnt see the correct starting vector in both cases(fetches 0xFFFF).
+Another issue is that balloon fight works just perfectlu uexcept cotroller doesn't work
+and Donkey Kong has garbage on the title screen and a bit garbage inside the game itself.
 
-[x] - add official rom tests just add to gitignore to avoid legal issues
-[ ] - given a test input sequence with timings(based on cpu cycles executed) compare CPU and PPU data. This could be done by taking an existing emulator, breakpointing on specific cycle and saving the state
-[ ] - Lode Runner scrolling has weird effects
+This leads to suspect CPU/RAM totally however I've spent whole week's evening and it's just not going anywhere
 
-[ ] - variable delta for frame skipping instead of a constant
+
+instr-test-5 seems to be helpful however it seems
+it has loading problems related to
+SMB and IC so fixing those makes sense

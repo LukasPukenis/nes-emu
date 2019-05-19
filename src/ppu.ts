@@ -105,7 +105,13 @@ export class PPU {
     pixels: Uint8ClampedArray;
     debugPixels: Uint8ClampedArray;
 
+    debugIndex: number;
+    debugList: any[];
     constructor(nes: NES, canvas: HTMLCanvasElement, debugCanvas: HTMLCanvasElement) {
+
+        this.debugIndex = 0;
+        this.debugList = [];
+
         this.canvasElement = canvas;
         this.debugCanvasElement = debugCanvas;
 
@@ -196,6 +202,22 @@ static MirrorLookup:any = [
             this.mirrorTable[from+i] = to+i;
     }
 
+    dump(from: number, to: number) {
+        let cnt = 0;
+        let data = '';
+        for (let i = from; i <= to; i++) {
+            data += this.vram[i].toString(16).padStart(2, '0') +" ";
+            cnt ++;
+            cnt %= 16;
+
+            if (cnt == 0) {
+                console.log(data);
+                data = '';
+            }
+        }
+
+    }
+
     nmiChange() {
         let nmi = this.generateNMI && this.v_blank;
 
@@ -255,11 +277,11 @@ static MirrorLookup:any = [
             if ((attributes & 0x40) == 0x40) {
                 p1 = (lowTileByte & 1) << 0;
                 p2 = (highTileByte & 1) << 1;
-                lowTileByte >>= 1;
-                highTileByte >>= 1;
+                lowTileByte >>>= 1;
+                highTileByte >>>= 1;
             } else {
-                p1 = (lowTileByte & 0x80) >> 7;
-                p2 = (highTileByte & 0x80) >> 6;
+                p1 = (lowTileByte & 0x80) >>> 7;
+                p2 = (highTileByte & 0x80) >>> 6;
                 lowTileByte <<= 1;
                 highTileByte <<= 1;
             }
@@ -292,7 +314,7 @@ static MirrorLookup:any = [
             if (count < 8) {
                 this.spritePatterns[count] = 0xFFFFFFFF & this.fetchSpritePattern(i, row);
                 this.spritePositions[count] = x;
-                this.spritePriorities[count] = (a >> 5) & 1;
+                this.spritePriorities[count] = (a >>> 5) & 1;
                 this.spriteIndexes[count] = i & 0xFF;
             }
             count++
@@ -319,7 +341,7 @@ static MirrorLookup:any = [
         if (this.maskShowBG == 1) {
             
             const tileData = this.tileData[1];
-            const data = tileData >> ((7 - this.fineX) * 4);
+            const data = tileData >>> ((7 - this.fineX) * 4);
             background = data & 0xF;
         }
 
@@ -339,7 +361,7 @@ static MirrorLookup:any = [
     
                 offset = 7 - offset;
                 const a = (offset*4) & 0xFF;
-                let b = this.spritePatterns[i] >> a;
+                let b = (this.spritePatterns[i] >>> a);
 
                 if (DEBUG_SPRITES)
                     b = i+1;
@@ -405,8 +427,8 @@ static MirrorLookup:any = [
 
         let c = PALETTE[fromPalette];
 
-        const colr = (c >> 16) & 0xFF;
-        const colg = (c >> 8) & 0xFF;
+        const colr = (c >>> 16) & 0xFF;
+        const colg = (c >>> 8) & 0xFF;
         const colb = c & 0xFF;
         
         let pixelIdx = (x + y*256) * 4;
@@ -450,7 +472,7 @@ static MirrorLookup:any = [
             // fine Y = 0
             this.v[0] &= 0x8FFF;
             // let y = coarse Y
-            let y = (this.v[0] & 0x03E0) >> 5;
+            let y = (this.v[0] & 0x03E0) >>> 5;
             if (y == 29) {
                 // coarse Y = 0
                 y = 0;
@@ -472,18 +494,30 @@ static MirrorLookup:any = [
         const v = this.v[0];
         const address = 0x2000 | (v & 0x0FFF);
         this.nameTableByte = this.read(address);
+
+        if (this.nameTableByte == 0xD1) {
+            
+        }
+            // console.log(address.toString(16));
+        // if (this.nameTableByte == 0x1 || this.nameTableByte == 0x9 || this.nameTableByte == 0x8) {
+        //     this.debugList.push(address.toString(16));
+        // } else {
+        //     if (this.debugList.length > 0)
+        //         console.log('==>', this.debugList);
+        //     this.debugList = [];
+        // }    
     }
     
     fetchAttributeTableByte() {
         let v = this.v[0];
-        const address = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
+        const address = 0x23C0 | (v & 0x0C00) | ((v >>> 4) & 0x38) | ((v >>> 2) & 0x07);
         const shift = ((v >> 4) & 4) | (v & 2);
-        this.attributeTableByte = 0xFF & (((this.read(address) >> shift) & 3) << 2);
+        this.attributeTableByte = 0xFF & (((this.read(address) >>> shift) & 3) << 2);
         this.debugInfo.attribute = this.attributeTableByte;
     }
     
     fetchLowTileByte() {
-        let fineY = (this.v[0] >> 12) & 7;
+        let fineY = (this.v[0] >>> 12) & 7;
         const table = this.controlBackgroundTable;  
         const tile = this.nameTableByte;
         const address = 0x1000*table + (0xFFFF & tile)*16 + fineY;
@@ -492,7 +526,7 @@ static MirrorLookup:any = [
     }
 
     fetchHighTileByte() {
-        let fineY = (this.v[0] >> 12) & 7;
+        let fineY = (this.v[0] >>> 12) & 7;
         const table = this.controlBackgroundTable;
         const tile = this.nameTableByte;
         const address = 0x1000*table + (0xFFFF & tile)*16 + fineY;
@@ -505,8 +539,8 @@ static MirrorLookup:any = [
         const a = this.attributeTableByte & 0xFF;
 
         for (let i = 0; i < 8; i++) {            
-            const p1 = (this.tileBytes[0] & 0x80) >> 7;
-            const p2 = (this.tileBytes[1] & 0x80) >> 6;
+            const p1 = (this.tileBytes[0] & 0x80) >>> 7;
+            const p2 = (this.tileBytes[1] & 0x80) >>> 6;
             this.tileBytes[0] <<= 1;
             this.tileBytes[1] <<= 1;
 
@@ -540,8 +574,8 @@ static MirrorLookup:any = [
 
                 for (let m = 0; m < 8; m++) {
                     const reduct = 7 - m;
-                    const val0 = (line0 >> reduct) & 1;
-                    const val1 = (line1 >> reduct) & 1;                        
+                    const val0 = (line0 >>> reduct) & 1;
+                    const val1 = (line1 >>> reduct) & 1;                        
                     const finalVal = val0 | (val1 << 1);
                                                                 
                     const pixelOffset = (n * 256*2 + m) * 4;
@@ -567,8 +601,8 @@ static MirrorLookup:any = [
 
                 for (let m = 0; m < 8; m++) {
                     const reduct = 7 - m;
-                    const val0 = (line0 >> reduct) & 1;
-                    const val1 = (line1 >> reduct) & 1;                        
+                    const val0 = (line0 >>> reduct) & 1;
+                    const val1 = (line1 >>> reduct) & 1;                        
                     const finalVal = val0 | (val1 << 1);
                                                                 
                     const pixelOffset = (n * 256*2 + m) * 4;
@@ -604,6 +638,7 @@ static MirrorLookup:any = [
         }
 
         this.canvas.putImageData(this.imageData, 0, 0);
+        
         // this.debugRenderSprites();
         // this.debugCanvas.putImageData(this.debugImageData, 0, 0);        
     }
@@ -664,7 +699,7 @@ static MirrorLookup:any = [
                 }
 
                 if (renderLine && fetchCycle) {
-                    this.tileData[1] = (this.tileData[1] << 4) | ((this.tileData[0] >> 28) & 0xF);
+                    this.tileData[1] = (this.tileData[1] << 4) | ((this.tileData[0] >>> 28) & 0xF);
                     this.tileData[0] = this.tileData[0] << 4;
                     
                     switch (this.cycle % 8) {
@@ -749,7 +784,7 @@ static MirrorLookup:any = [
             // t: ....... ...HGFED = d: HGFED...
             // x:              CBA = d: .....CBA
             // w:                  = 1            
-            this.t[0] = (this.t[0] & 0xFFE0) | ((value & 0xFFFF) >> 3)
+            this.t[0] = (this.t[0] & 0xFFE0) | ((value & 0xFFFF) >>> 3)
             this.fineX = value & 0x07;
             this.w[0] = 1;
         } else {
@@ -786,23 +821,26 @@ static MirrorLookup:any = [
 
     readRegister(addr: number, poke: boolean = false): number {
         if (addr == 0x2000) {
-            return this.readControl(addr, poke);
+            console.error("DONT DO THAT 0x2000");
         } else if (addr == 0x2002) {            
             return this.readStatus(poke);
         } else if (addr == 0x2001) {
-            return this.readMask(addr, poke);
+            console.error("DONT DO THAT 0x2001");
         } else if (addr == 0x2003) {
             return this.readOAMAddress(addr, poke);
         } else if (addr == 0x2004) {
             return this.readOAMData();
         } else if (addr == 0x2005) {
+            console.error("DONT DO THAT 0x2005");
             return 0; // todo: this code should not exist. it's used for CPU debugging to show value at memory. It should show nothing for this specific address and few others
         } else if (addr == 0x2006) {
-            return this.readAddress(addr, poke);
+            console.error("DONT DO THAT 0x2006");
         } else if (addr == 0x2007) {
             return this.readFromAddress(poke);
         } else if (addr == 0x4014) {
-            return this.readDMA(addr, poke);
+            debugger;
+            console.error("DONT DO THAT 0x4014");
+            return 0;
         }
     }
     
@@ -891,14 +929,14 @@ static MirrorLookup:any = [
     writeControl(value: number): void {
         // console.log('write ctrl', value.toString(2));
 
-        this.controlNameTable =   ((value >> 0) & 3);
-        this.controlIncrement =   ((value >> 2) & 1);
-        this.controlSpriteTable = ((value >> 3) & 1);
-        this.controlBackgroundTable = ((value >> 4) & 1);
+        this.controlNameTable =   ((value >>> 0) & 3);
+        this.controlIncrement =   ((value >>> 2) & 1);
+        this.controlSpriteTable = ((value >>> 3) & 1);
+        this.controlBackgroundTable = ((value >>> 4) & 1);
         
-        this.controlSpriteSize =      ((value >> 5) & 1);
-        this.controlMasterSlave =     ((value >> 6) & 1);
-        this.generateNMI =            ((value >> 7) & 1) == 1;
+        this.controlSpriteSize =      ((value >>> 5) & 1);
+        this.controlMasterSlave =     ((value >>> 6) & 1);
+        this.generateNMI =            ((value >>> 7) & 1) == 1;
         
         this.t[0] = ((this.t[0] & 0xF3FF) | ((value & 0xFFFF) & 0x03) << 10);
         this.nmiChange();
@@ -907,10 +945,10 @@ static MirrorLookup:any = [
     writeMask(value: number): void {
         // console.log('write mask', value.toString(2));
         this.maskGrayscale = (value & 1) & 1;
-        this.maskShowBG = (value >> 3) & 1;
-        this.maskShowSprites = (value >> 4) & 1;
-        this.maskShowLeftBG = (value >> 1) & 1;
-        this.maskShowLeftSprites = (value >> 2) & 1;
+        this.maskShowBG = (value >>> 3) & 1;
+        this.maskShowSprites = (value >>> 4) & 1;
+        this.maskShowLeftBG = (value >>> 1) & 1;
+        this.maskShowLeftSprites = (value >>> 2) & 1;
     }
 
     writeOAMAddress(value: number): void {
@@ -940,28 +978,12 @@ static MirrorLookup:any = [
 
         this.cpu.setStall(stall);
     }
-
-    readAddress(value: number, poke: boolean): number {
-        return 1;
-    }
-
-    readControl(value: number, poke: boolean): number {
-        return 1;
-    }
     
-    readMask(value: number, poke: boolean): number {
-        return 1;
-    }
-
     readOAMAddress(value: number, poke: boolean): number {
         return this.oamAddress;
     }
 
     readOAMData(): number {
         return this.oamData[this.oamAddress];
-    }
-
-    readDMA(value: number, poke: boolean): number {
-        return 1;
-    }
+    }    
 }

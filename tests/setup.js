@@ -4,4 +4,5 @@ global.Request = Request;
 global.Headers = Headers;
 global.fetch = fetch;
 global.TEST = true;
-global.DEBUG_CPU = false;
+global.DEBUG_CPU = true;
+global.mmm = [];

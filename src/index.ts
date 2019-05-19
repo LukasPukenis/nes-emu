@@ -2,19 +2,43 @@ import { NES } from './nes';
 import { BUTTON, BUTTONS } from './controller';
 
 // const path = './roms/official/DonkeyKong.nes'; // mirror: 0
-const path = './roms/official/BalloonFight.nes'; // mirror: 0
-
+// const path = './roms/official/bomberman.nes'; // mirror: 0
+// const path = './roms/official/BalloonFight.nes'; // mirror: 0
 // const path = './roms/official/LodeRunner.nes'; // mirror: 0
-// const path = './roms/official/smb.nes'; // mirror: 1
-
+// const path = './roms/official/ic.nes'; // mirror: 1
 // const path = './roms/official/Pinball.nes'; // mirror: 0
-// const path = './roms/bkg.nes';
-// const path = './tests/blaarg/ppu/01-vbl_basics.nes';
-// const path = './tests/blaarg/ppu/02-vbl_set_time.nes';
-// const path = './roms/nestest.nes';
+
+// const path = './roms/vram_access.nes'; // PASSES OK
+// const path = './roms/vbl_clear_time.nes'; // PASSES OK
+// const path = './roms/official_only.nes'; // PASSES OK
+
+
+// const path = './roms/instr_test/rom_singles/01-basics.nes';
+const path = './roms/instr_test/rom_singles/02-implied.nes'; // fail
+// const path = './roms/instr_test/rom_singles/03-immediate.nes'; // fail
+// const path = './roms/instr_test/rom_singles/04-zero_page.nes'; // fail
+// const path = './roms/instr_test/rom_singles/05-zp_xy.nes'; // fail
+// const path = './roms/instr_test/rom_singles/06-absolute.nes';
+// const path = './roms/instr_test/rom_singles/07-abs_xy.nes';
+// const path = './roms/instr_test/rom_singles/08-ind_x.nes';
+// const path = './roms/instr_test/rom_singles/09-ind_y.nes';
+// const path = './roms/instr_test/rom_singles/10-branches.nes';
+// const path = './roms/instr_test/rom_singles/11-stack.nes';
+// const path = './roms/instr_test/rom_singles/12-jmp_jsr.nes';
+// const path = './roms/instr_test/rom_singles/13-rts.nes';
+// const path = './roms/instr_test/rom_singles/14-rti.nes';
+// const path = './roms/instr_test/rom_singles/15-brk.nes';
+// const path = './roms/instr_test/rom_singles/16-special.nes';
+
+// const path = './roms/official/nestestcart.nes';
+
+
+// const path = './tests/nestest/nestest.nes';
 
 // @ts-ignore
-// window.DEBUG_CPU = true;
+window.mmm = [];
+// @ts-ignore
+window.DEBUG_CPU = true;
 
 let nes = new NES(
     document.getElementById('canvas') as HTMLCanvasElement,
@@ -43,6 +67,7 @@ const buttonActionMap: { [key in string]: BUTTON} = {
 
 window.addEventListener("keydown", function(event) {
     if (event.key in buttonActionMap) {
+        console.log(`Pressed "${BUTTON[buttonActionMap[event.key]]}"`);
         buttons[buttonActionMap[event.key]] = true;
         nes.getController1().setButtons(buttons);
     }    

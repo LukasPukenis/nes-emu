@@ -21,6 +21,9 @@ test("nestest.nes rom", async () => {
 
             expect(dump).toEqual(line);
         }
+
+        console.log("Checked ", lines.length, 'lines');
+        console.log("Results ", nes.getMemory().read(2), 'and', nes.getMemory().read(3))
     } catch(e) {
         throw e;
     }

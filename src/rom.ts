@@ -1,3 +1,5 @@
+import { NES } from "./nes";
+
 var fs = require('mz/fs')
 
 const PRG_ROM_COUNT = 4;
@@ -18,10 +20,11 @@ class Header {
 
 export class ROM {
     private path: string;
-    private data: Int8Array;
+    private data: Uint8Array;
     private prgroms: any[] = [];
     private chrroms: any[] = [];
     private header: Header; 
+    private wholeprgrom: Uint8Array;
 
     constructor() {
     }
@@ -51,7 +54,7 @@ export class ROM {
             parsedData = await data.arrayBuffer();
         }
         
-        this.data = new Int8Array(parsedData);
+        this.data = new Uint8Array(parsedData);
 
         if (!this.validate(this.data))
             return false;        
@@ -62,15 +65,23 @@ export class ROM {
         this.header.chrRomCnt = this.data[CHR_ROM_COUNT];
         this.header.mirror = this.data[FLAG6] & 1;
 
+        // this.header.mirror = 0;
+
         console.log("Mirror bit", this.header.mirror);
         
         for (let i = 0; i < this.header.prgRomCnt; i++)            
             this.prgroms.push(this.data.slice(16 + i*0x4000, (i+1)*0x4000+16));
 
+
         let chrOffset = this.header.prgRomCnt * 0x4000 + 16;
         for (let i = 0; i < this.header.chrRomCnt; i++) {
             this.chrroms.push(this.data.slice(chrOffset + i*0x2000, chrOffset + (i+1)*0x2000));
         }
+
+        this.wholeprgrom = new Uint8Array(0x4000 * this.header.prgRomCnt);
+        for (let i = 0; i < this.header.prgRomCnt * 0x4000; i++)
+            this.wholeprgrom[i] = this.data[16 + i];
+
 
         console.log(`PRG ROMS: #${this.header.prgRomCnt}`);
         console.log(`CHR ROMS: #${this.header.chrRomCnt}`);
@@ -83,6 +94,10 @@ export class ROM {
         return this.header.mirror;
     }
 
+    getPRG() {
+        return this.wholeprgrom;
+    }
+
     getPRGROMS() {
         return this.prgroms;
     }
@@ -91,7 +106,7 @@ export class ROM {
         return this.chrroms;
     }
 
-    validate(data: Int8Array) {
+    validate(data: Uint8Array) {
         console.assert(data && data.length > 0);        
 
         return data[0] == 0x4E &&
