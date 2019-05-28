@@ -2756,7 +2756,7 @@ export class CPU {
   X: Register8;
   Y: Register8;
   PC: Register16;
-  SP: Register16;
+  SP: Register8;
   P: Register8;
 
   interrupt: Interrupt = Interrupt.None;
@@ -2783,7 +2783,7 @@ export class CPU {
     this.X = new Uint8Array(1);
     this.Y = new Uint8Array(1);
     this.P = new Uint8Array(1);
-		this.SP = new Uint16Array(1);
+		this.SP = new Uint8Array(1);
 		// this.SP[0] = 0x1FF;
     this.PC = new Uint16Array(1);
   }
@@ -2799,6 +2799,8 @@ export class CPU {
     this.cycles = 7;
     this.cyclesToAdd = 0;
 
+    // this.P[0] = 0x36;
+    
     this.PPUCNT1 = 0;
     this.PPUCNT2 = 0;
     this.rom = rom;
@@ -2923,7 +2925,7 @@ export class CPU {
     this.currentOpcode = opcode;
     let data = opcodeData;
     
-    if (window.hasOwnProperty("DEBUG_CPU") || true) {
+    if (window.hasOwnProperty("DEBUG_CPU")) {
       // todo: make this code be based on testing flag which should be set in each test file yadda yadda
       // throw new Error('This function has side effects and it costs you hours!!!!!');
 
@@ -3176,15 +3178,8 @@ export class CPU {
             .toUpperCase()
             .padStart(2, "0")
       );
-      // output.push(`PPU:${this.PPUCNT1.toString().padStart(2, ' ')},${this.PPUCNT2.toString().padStart(2, ' ')}`);
       output.push("CYC:" + this.cycles);
-			this.debugOpcode = output.join(" ");
-			
-			// if (this.PC[0] >= 0x816f && this.PC[0] <= 0x818e) {
-				// @ts-ignore
-				// window.mmm.push(this.debugOpcode);
-			// }
-
+			this.debugOpcode = output.join(" ");			
     }
 
     let cyclesWasted = this.cyclesToAdd;
@@ -4492,7 +4487,7 @@ export class CPU {
   }
 
   _cmp(a: OpData, b: OpData) {
-    this.setZN(a - b);
+    this.setZN( (a - b) & 0xff);
     if (a >= b) {
       this.P[0] |= 1;
     } else {
@@ -4501,7 +4496,7 @@ export class CPU {
   }
 
   setZ(data: OpData) {
-    if (data == 0) {
+    if ((data & 0xFF) == 0) {
       this.P[0] |= 0b00000010;
     } else {
       this.P[0] &= 0b11111101;
@@ -4510,7 +4505,8 @@ export class CPU {
 
   setO(data: OpData) {
     this.P[0] &= 0b10111111;
-    this.P[0] |= data & 0b01000000;
+    // this.P[0] |= data & 0b01000000;
+    this.P[0] |= ((data >>> 6) & 1) << 6;
   }
 
   setN(data: OpData) {
@@ -4531,6 +4527,8 @@ export class CPU {
   }
 
   setZN(data: OpData) {
+    data &= 0xFF;
+
     this.setZ(data);
     this.setN(data);
   }
@@ -4549,12 +4547,14 @@ export class CPU {
 
   push(data: OpData) {
     // todo: make sure there's a huge difference between this and 16 variant - rename to 8 if needed
-    this.memory.write(0x100 | this.SP[0], data);
+    this.memory.write(0x100 | this.SP[0], data & 0xFF);
     this.SP[0]--;
     this.SP[0] &= 0xff;
   }
 
   push16(data: OpData) {
+    data &= 0xFFFF;
+
     let hi = data >>> 8;
     let lo = data & 0xff;
     this.push(hi);
@@ -4637,12 +4637,11 @@ export class CPU {
     this.setZN(this.A[0]);
   }
 
-	// temp = this.load(addr);
-	// this.F_SIGN = (temp >> 7) & 1;
-	// this.F_OVERFLOW = (temp >> 6) & 1;
-	// temp &= this.REG_ACC;
-	// this.F_ZERO = temp;
-	// break;
+	// value := cpu.Read(info.address)
+	// cpu.V = (value >> 6) & 1
+	// cpu.setZ(value & cpu.A)
+  // cpu.setN(value)
+  
   BIT(data: OpData): void {
     let val = this.memory.read(data);
 
@@ -4651,25 +4650,8 @@ export class CPU {
     this.setN(val);
   }
 
-	// func (cpu *CPU) rol(info *stepInfo) {
-	// 	if info.mode == modeAccumulator {
-	// 		c := cpu.C
-	// 		cpu.C = (cpu.A >> 7) & 1
-	// 		cpu.A = (cpu.A << 1) | c
-	// 		cpu.setZN(cpu.A)
-	// 	} else {
-	// 		c := cpu.C
-	// 		value := cpu.Read(info.address)
-	// 		cpu.C = (value >> 7) & 1
-	// 		value = (value << 1) | c
-	// 		cpu.Write(info.address, value)
-	// 		cpu.setZN(value)
-	// 	}
-	// }
-	
   ROLA(data: OpData): void {
     let C = this.P[0] & 1;    
-		// this.P[0] |= (this.A[0] >>> 7) & 1;
 		this.setC(this.A[0]);
     this.A[0] = (this.A[0] << 1) | C;    
     this.setZN(this.A[0]);
@@ -4715,17 +4697,18 @@ export class CPU {
     this.LSR(data);
     this.EOR(data);
   }
-
+  
   LSRA(data: OpData): void {
-    this.P[0] &= 0b11111110 | (this.A[0] & 1);
+    this.P[0] &= 0b11111110;
+    this.P[0] |= (this.A[0] & 1);    
     this.A[0] >>>= 1;
-    this.A[0] &= 0xff;
     this.setZN(this.A[0]);
   }
 
   LSR(data: OpData): void {
     let val = this.memory.read(data);
-    this.P[0] &= 0b11111110 | (val & 1);
+    this.P[0] &= 0b11111110;
+    this.P[0] |= (val & 1);
     val >>>= 1;
     val &= 0xff;
     this.memory.write(data, val);
@@ -4759,27 +4742,48 @@ export class CPU {
     this.PC[0] = this.pop16() + 1;
   }
 
+  // a := cpu.A
+	// b := cpu.Read(info.address)
+	// c := cpu.C
+	// cpu.A = a + b + c
+	// cpu.setZN(cpu.A)
+	// if int(a)+int(b)+int(c) > 0xFF {
+	// 	cpu.C = 1
+	// } else {
+	// 	cpu.C = 0
+	// }
+	// if (a^b)&0x80 == 0 && (a^cpu.A)&0x80 != 0 {
+	// 	cpu.V = 1
+	// } else {
+	// 	cpu.V = 0
+  // }
+  
   ADC(data: OpData): void {
-    let val: any = this.memory.read(data);
-    let C = this.P[0] & 1;
-    let A: any = this.A[0];
-    let temp = A + val + C;
+    let a = new Uint8Array(1);
+    let b = new Uint8Array(1);
+    let c = new Uint8Array(1);
+    
+    a[0] = this.A[0];
+    b[0] = this.memory.read(data);
+    c[0] = this.P[0] & 1;
+    this.A[0] = a[0] + b[0] + c[0];
+    this.setZN(this.A[0]);
 
-    if (temp > 0xff) {
+    let _a = a[0];
+    let _b = b[0];
+    let _c = c[0];
+    
+    if (_a + _b + _c > 0xFF) {
       this.P[0] |= 1;
     } else {
-      this.P[0] &= 0xfe;
+      this.P[0] &= 0b11111110;
     }
 
-    if (((A ^ val) & 0x80) == 0 && ((temp ^ this.A[0]) & 0x80) != 0) {
+    if (( ((a[0]^b[0]) & 0x80) == 0 ) && (((a[0] ^ this.A[0]) & 0x80) != 0) ) {
       this.P[0] |= 0b01000000;
     } else {
       this.P[0] &= 0b10111111;
     }
-
-    temp &= 0xff;
-    this.A[0] = temp;
-    this.setZN(temp);
   }
 
   RRA(data: OpData): void {
@@ -4971,13 +4975,11 @@ export class CPU {
 
   INY(data: OpData): void {
     this.Y[0]++;
-    this.Y[0] &= 0xff;
     this.setZN(this.Y[0]);
   }
 
   DEX(data: OpData): void {
     this.X[0]--;
-    this.X[0] &= 0xff;
     this.setZN(this.X[0]);
   }
 
@@ -4985,7 +4987,7 @@ export class CPU {
     // todo instr
   }
 
-  BNE(data: OpData): void {
+  BNE(data: OpData): void {    
     if (!(this.P[0] & 0b00000010)) {
       this.addPageCycles(this.PC[0], data);
       this.PC[0] = data;
@@ -5021,28 +5023,51 @@ export class CPU {
     temp &= 0xff;
     this.A[0] = temp;
   }
-
+  
+  // a := cpu.A
+	// b := cpu.Read(info.address)
+	// c := cpu.C
+	// cpu.A = a - b - (1 - c)
+	// cpu.setZN(cpu.A)
+	// if int(a)-int(b)-int(1-c) >= 0 {
+	// 	cpu.C = 1
+	// } else {
+	// 	cpu.C = 0
+	// }
+	// if (a^b)&0x80 != 0 && (a^cpu.A)&0x80 != 0 {
+	// 	cpu.V = 1
+	// } else {
+	// 	cpu.V = 0
+  // }
+  
   SBC(data: OpData): void {
-    let val: number = this.memory.read(data);
-    let C = this.P[0] & 1;
-    let A: any = this.A[0];
-    let temp = A - val - (1 - C);
+    let a = new Uint8Array(1);
+      a[0] = this.A[0];
 
-    if (temp >= 0) {
-      this.P[0] |= 1;
+    let b = new Uint8Array(1);
+      b[0] = this.memory.read(data);
+
+    let c = new Uint8Array(1);
+      c[0] = this.P[0] & 1;
+
+    this.A[0] = a[0] - b[0] - (1 - c[0]);
+    this.setZN(this.A[0]);
+
+    let _a = a[0];
+    let _b = b[0];
+    let _c = c[0];
+
+    if (_a - _b - (1 - _c) >= 0) {
+      this.P[0] |= 0b00000001;
     } else {
-      this.P[0] &= 0xfe;
+      this.P[0] &= 0b11111110;
     }
 
-    if (((A ^ val) & 0x80) != 0 && ((temp ^ this.A[0]) & 0x80) != 0) {
+    if ( ((a[0]^b[0]) & 0x80) != 0 && ((a[0]^this.A[0]) & 0x80) != 0) {
       this.P[0] |= 0b01000000;
     } else {
       this.P[0] &= 0b10111111;
     }
-
-    this.setZN(temp);
-    temp &= 0xff;
-    this.A[0] = temp;
   }
 
   ISB(data: OpData): void {

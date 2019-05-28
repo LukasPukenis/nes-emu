@@ -1,20 +1,15 @@
 import { NES } from './nes';
 import { BUTTON, BUTTONS } from './controller';
 
-// const path = './roms/official/DonkeyKong.nes'; // mirror: 0
+const path = './roms/official/DonkeyKong.nes'; // mirror: 0
 // const path = './roms/official/bomberman.nes'; // mirror: 0
 // const path = './roms/official/BalloonFight.nes'; // mirror: 0
 // const path = './roms/official/LodeRunner.nes'; // mirror: 0
 // const path = './roms/official/ic.nes'; // mirror: 1
 // const path = './roms/official/Pinball.nes'; // mirror: 0
 
-// const path = './roms/vram_access.nes'; // PASSES OK
-// const path = './roms/vbl_clear_time.nes'; // PASSES OK
-// const path = './roms/official_only.nes'; // PASSES OK
-
-
 // const path = './roms/instr_test/rom_singles/01-basics.nes';
-const path = './roms/instr_test/rom_singles/02-implied.nes'; // fail
+// const path = './roms/instr_test/rom_singles/02-implied.nes'; // fail
 // const path = './roms/instr_test/rom_singles/03-immediate.nes'; // fail
 // const path = './roms/instr_test/rom_singles/04-zero_page.nes'; // fail
 // const path = './roms/instr_test/rom_singles/05-zp_xy.nes'; // fail
@@ -31,14 +26,7 @@ const path = './roms/instr_test/rom_singles/02-implied.nes'; // fail
 // const path = './roms/instr_test/rom_singles/16-special.nes';
 
 // const path = './roms/official/nestestcart.nes';
-
-
 // const path = './tests/nestest/nestest.nes';
-
-// @ts-ignore
-window.mmm = [];
-// @ts-ignore
-window.DEBUG_CPU = true;
 
 let nes = new NES(
     document.getElementById('canvas') as HTMLCanvasElement,
