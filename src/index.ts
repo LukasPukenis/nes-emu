@@ -1,11 +1,12 @@
 import { NES } from './nes';
 import { BUTTON, BUTTONS } from './controller';
 
-const path = './roms/official/DonkeyKong.nes'; // mirror: 0
+// const path = './roms/official/DonkeyKong.nes'; // mirror: 0
 // const path = './roms/official/bomberman.nes'; // mirror: 0
 // const path = './roms/official/BalloonFight.nes'; // mirror: 0
 // const path = './roms/official/LodeRunner.nes'; // mirror: 0
-// const path = './roms/official/ic.nes'; // mirror: 1
+// const path = './roms/official/ic.nes';  // mirror: 1
+const path = './roms/official/smb.nes';
 // const path = './roms/official/Pinball.nes'; // mirror: 0
 
 // const path = './roms/instr_test/rom_singles/01-basics.nes';

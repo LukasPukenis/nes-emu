@@ -117,21 +117,9 @@ export class NES {
         this.lastTime = currTime;
 
         // fuse for not hogging CPU 100%
-        let _dt = dt < 0.2 ? dt : 0.00;
-        // _dt = dt;
-        // console.log(_dt);
-
+        let _dt = dt < 0.2 ? dt : 0.00;        
         let cyclesToRun = _dt * CPU_FREQ;
-        // console.log('cyclesToRun:', Math.round(cyclesToRun));
-        
-        // console.log('*', cyclesToRun);
-
-        while (cyclesToRun > 0) {
-            if (this.totalCycles >= CPU_FREQ*100) {
-                console.log("FUSE'D")
-                break;
-            }
-            
+        while (cyclesToRun > 0) {            
             let cpuCyclesUsed = this.cpu.step();                        
             cyclesToRun -= cpuCyclesUsed;
             
