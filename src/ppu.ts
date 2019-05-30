@@ -509,11 +509,28 @@ static MirrorLookup:any = [
     }
     
     fetchAttributeTableByte() {
+        
+        // to fetch the proper byte we need to calculate the exact offset in attribute area
+        // and then extract the needed 2 bit portion. Attribuet table is a 64bytes area
+        // where each byte controls the attribuets of 4x4 tiles(16 tiles in total). Each 2 bits
+        // control 2x2 tiles(4 tiles in total) in this order
+        //   0  1
+        //   2  3        
+        
         let v = this.v[0];
-        const address = 0x23C0 | (v & 0x0C00) | ((v >>> 4) & 0x38) | ((v >>> 2) & 0x07);
-        const shift = ((v >> 4) & 4) | (v & 2);
-        this.attributeTableByte = 0xFF & (((this.read(address) >>> shift) & 3) << 2);
-        this.debugInfo.attribute = this.attributeTableByte;
+        const coarseY = ((v >>> 5) & 0x1F);
+        const coarseX = (v & 0x1F);
+        const nametable = (v >> 10) & 3;
+        
+        const base = 0x23C0 + (nametable * 0x400);
+        const address = base | (((coarseY >>> 2) * 8) + (coarseX >>> 2));
+
+        let attrbyte = this.read(address) ;
+        const x = (coarseX % 4) >>> 1;
+        const y = (coarseY % 4) >>> 1;
+        const shift = ((y << 1) + x) * 2;
+
+        this.attributeTableByte = ((attrbyte >>> shift) & 3) << 2;            
     }
     
     fetchLowTileByte() {
