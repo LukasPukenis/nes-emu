@@ -331,11 +331,6 @@ static MirrorLookup:any = [
     renderPixel() {
         const x = this.cycle - 1;
         const y = this.scanLine;
-                       
-        // if (window.hasOwnProperty("TEST")) // todo: slowwwwww
-        //     return;            
-        
-        // let background = this.backgroundPixel()
 
         let background = 0;
         if (this.maskShowBG == 1) {
@@ -782,7 +777,6 @@ static MirrorLookup:any = [
     }    
 
     writeScroll(value: any) {
-
         if (this.w[0] == 0) {
             // t: ....... ...HGFED = d: HGFED...
             // x:              CBA = d: .....CBA
@@ -800,7 +794,6 @@ static MirrorLookup:any = [
     }
 
     writeRegister(addr: number, value: number): void {
-        // console.log('PPU write', addr.toString(16), value.toString(2));
         this.register = value;
 
         if (addr == 0x2000) {
@@ -841,7 +834,6 @@ static MirrorLookup:any = [
         } else if (addr == 0x2007) {
             return this.readFromAddress(poke);
         } else if (addr == 0x4014) {
-            debugger;
             console.error("DONT DO THAT 0x4014");
             return 0;
         }
@@ -852,7 +844,6 @@ static MirrorLookup:any = [
 
         if (addr < 0x2000) {
             let x = this.mapper.read(addr, poke) & 0xFF; 
-            // console.log("from ", addr.toString(16), '->', x.toString(16));
             return x;
         } else if (addr < 0x3F00) {
             let mode = this.nes.getROM().getMirror();
@@ -860,7 +851,6 @@ static MirrorLookup:any = [
         } else if (addr < 0x4000) {
             return this.readPalette(addr % 32);
         } else {
-            // return this.vram[addr] & 0xFF;
             throw new Error("Should not be accessed");
         }
     }
@@ -868,8 +858,7 @@ static MirrorLookup:any = [
     write(addr: number, value: number): void {
         addr = addr % 0x4000;
         if (addr < 0x2000) {
-            // throw new Error("Cant write to mapper! yet");
-            // this.nes.getMapper().write(addr, value, poke);
+            throw new Error("Cant write to mapper! yet");
         } else if (addr < 0x3F00) {
             let mode = this.nes.getROM().getMirror();
             this.vram[ this.MirrorAddress(mode, addr) % 2048] = value; // todo: mirroring
@@ -930,8 +919,6 @@ static MirrorLookup:any = [
     }
 
     writeControl(value: number): void {
-        // console.log('write ctrl', value.toString(2));
-
         this.controlNameTable =   ((value >>> 0) & 3);
         this.controlIncrement =   ((value >>> 2) & 1);
         this.controlSpriteTable = ((value >>> 3) & 1);
@@ -946,7 +933,6 @@ static MirrorLookup:any = [
     }
     
     writeMask(value: number): void {
-        // console.log('write mask', value.toString(2));
         this.maskGrayscale = (value & 1) & 1;
         this.maskShowBG = (value >>> 3) & 1;
         this.maskShowSprites = (value >>> 4) & 1;
