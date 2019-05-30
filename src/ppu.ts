@@ -446,17 +446,14 @@ static MirrorLookup:any = [
         this.v[0] = (this.v[0] & 0xFBE0) | (this.t[0] & 0x041F)
     }
     
-    // this is direct copy paste from: https://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
+    // X is increased unless it's the final coarseX value and it needs wrap around
+    // and to ensure proper scrolling - 2 nametable display at once, we need to switch
+    // the nametables horizontally by flipping the 10th bit(0 based)
     incrementX() {        
-        // increment hori(v)
-        // if coarse X == 31
         if ((this.v[0] & 0x001F) == 31) {
-            // coarse X = 0
             this.v[0] &= 0xFFE0;
-            // switch horizontal nametable
             this.v[0] ^= 0x0400;
         } else {
-            // increment coarse X            
             this.v[0]++;            
         }
     }
@@ -508,8 +505,7 @@ static MirrorLookup:any = [
         // }    
     }
     
-    fetchAttributeTableByte() {
-        
+    fetchAttributeTableByte() {        
         // to fetch the proper byte we need to calculate the exact offset in attribute area
         // and then extract the needed 2 bit portion. Attribuet table is a 64bytes area
         // where each byte controls the attribuets of 4x4 tiles(16 tiles in total). Each 2 bits
