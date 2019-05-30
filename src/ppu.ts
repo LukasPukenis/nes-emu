@@ -458,10 +458,12 @@ static MirrorLookup:any = [
         }
     }
     
-    // this is direct copy paste from: https://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
+    // we need to increment the Y in order to ensure the proper scrolling - displaying of 2 nametables at once
+    // once we reach the end we need to wraparound by flipping the 11th bit
     incrementY() {        
         // increment vert(v)
         // if fine Y < 7
+        // 0x7000 - bits 12-14 for fineY, if fineY is already 7 then it needs to be reseted and coarseY incremented
         if ((this.v[0] & 0x7000) != 0x7000) {
             // increment fine Y
             this.v[0] += 0x1000;
@@ -475,7 +477,7 @@ static MirrorLookup:any = [
                 y = 0;
                 // switch vertical nametable
                 this.v[0] ^= 0x0800
-            } else if (y == 31) {
+            } else if (y == 31) { // that's just some edge case
                 // coarse Y = 0, nametable not switched
                 y = 0;
             } else {
@@ -490,19 +492,7 @@ static MirrorLookup:any = [
     fetchNameTableByte() {
         const v = this.v[0];
         const address = 0x2000 | (v & 0x0FFF);
-        this.nameTableByte = this.read(address);
-
-        if (this.nameTableByte == 0xD1) {
-            
-        }
-            // console.log(address.toString(16));
-        // if (this.nameTableByte == 0x1 || this.nameTableByte == 0x9 || this.nameTableByte == 0x8) {
-        //     this.debugList.push(address.toString(16));
-        // } else {
-        //     if (this.debugList.length > 0)
-        //         console.log('==>', this.debugList);
-        //     this.debugList = [];
-        // }    
+        this.nameTableByte = this.read(address);        
     }
     
     fetchAttributeTableByte() {        
