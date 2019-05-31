@@ -336,11 +336,11 @@ static MirrorLookup:any = [
         if (this.maskShowBG == 1) {
             
             const tileData = this.tileData[1];
+            // each pixel takes up 4 bits, 2 bits from the nametable and 2 attribute bits combined into one final value
             const data = tileData >>> ((7 - this.fineX) * 4);
             background = data & 0xF;
         }
 
-        // let [idx, sprite] = this.spritePixel();
         let idx = 0;
         let sprite = 0;
 
@@ -492,8 +492,8 @@ static MirrorLookup:any = [
     
     fetchAttributeTableByte() {        
         // to fetch the proper byte we need to calculate the exact offset in attribute area
-        // and then extract the needed 2 bit portion. Attribuet table is a 64bytes area
-        // where each byte controls the attribuets of 4x4 tiles(16 tiles in total). Each 2 bits
+        // and then extract the needed 2 bit portion. Attribute table is a 64bytes area
+        // where each byte controls the attributes of 4x4 tiles(16 tiles in total). Each 2 bits
         // control 2x2 tiles(4 tiles in total) in this order
         //   0  1
         //   2  3        
@@ -511,7 +511,7 @@ static MirrorLookup:any = [
         const y = (coarseY % 4) >>> 1;
         const shift = ((y << 1) + x) * 2;
 
-        this.attributeTableByte = ((attrbyte >>> shift) & 3) << 2;            
+        this.attributeTableByte = (attrbyte >>> shift) & 3;
     }
     
     fetchLowTileByte() {
@@ -532,23 +532,26 @@ static MirrorLookup:any = [
         this.debugInfo.highByte = this.tileBytes[1];
     }
 
+    /**
+     * PPU works by fetching everything in 2 cycle intervals and it fetches 
+     * nametable byte, attribute byte, low tile byte, high tile byte - in this specific order
+     * so it takes 8 clocks to fetch everything, once that's done we should zip the data for rendering
+     * and by zipping I mean - 2 lowest bits of the final colour is made from  the tile bytes and 2 from attribute bytes
+     * Rendering is happening every visible cycle, so we actually output 8 pixels for each iteration of this combined 4 fetches loop
+     */
     storeTileData() {
         let data = 0;
         const a = this.attributeTableByte & 0xFF;
 
-        for (let i = 0; i < 8; i++) {            
-            const p1 = (this.tileBytes[0] & 0x80) >>> 7;
-            const p2 = (this.tileBytes[1] & 0x80) >>> 6;
+        for (let i = 0; i < 8; i++) {
+            const bit0 = (this.tileBytes[0] & 0x80 ) >>> 7;
+            const bit1 = (this.tileBytes[1] & 0x80 ) >>> 7;
             this.tileBytes[0] <<= 1;
             this.tileBytes[1] <<= 1;
-
-            this.tileBytes[0] &= 0xFF;
-            this.tileBytes[1] &= 0xFF;
-            
-            
+        
             data <<= 4;
-            data |= (a | p1 | p2) & 0xFFFFFFFF;            
-        }        
+            data |= (a << 2) | (bit1 << 1) | bit0;
+        }
 
         this.tileData[0] = data;
     }
