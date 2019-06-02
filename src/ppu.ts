@@ -69,7 +69,9 @@ export class PPU {
     
     // todo: would be great to wrap these around UintArray8 or maybe provide getter/setter to guard against byte/word bounds
     spriteCount: number = 0;
-    tileData: Uint32Array = new Uint32Array(2);
+    tilePixelIndex: number = 0;
+    readyToRenderTileData: Uint8Array = new Uint8Array(8);    
+    storedTileData: Uint8Array = new Uint8Array(8);
     tileIndex: number = 16;
     tileBytes: Uint8Array = new Uint8Array(2);
     flagBGTable: number = 0;
@@ -332,12 +334,20 @@ static MirrorLookup:any = [
         const x = this.cycle - 1;
         const y = this.scanLine;
 
+        // background pixel rendering is affected by fine X scroll, Using bit shifting is more natural technique
+        // however I feel using arrays is more debugable and easier to understand even though not as natural as NESDEV PPU WIKI describes the flow
+        // this is a poor imitation of 2 shift registers where one is fetched with new pixels to render later
+        // while the other one is used to render said pixels, each time pixel is rendered they are shifted
         let background = 0;
-        if (this.maskShowBG == 1) {
-            
-            const tileData = this.tileData[1];
-            // each pixel takes up 4 bits, 2 bits from the nametable and 2 attribute bits combined into one final value
-            const data = tileData >>> ((7 - this.fineX) * 4);
+        if (this.maskShowBG == 1) {            
+            let idx = this.tilePixelIndex + this.fineX;            
+            let data;
+            if (idx < 8) {
+                data = this.readyToRenderTileData[idx];
+            } else {
+                data = this.storedTileData[idx - 8];
+            }
+
             background = data & 0xF;
         }
 
@@ -401,18 +411,7 @@ static MirrorLookup:any = [
             } else {
                 color = background;
             }
-        }        
-
-        // if (!this.debugInfo.data[y])
-        //   this.debugInfo.data[y] = [];
-    
-        // this.debugInfo.data[y][x] = {
-        //     background: background,
-        //     attribute: this.debugInfo.attribute,
-        //     lowByte: this.debugInfo.lowByte,
-        //     highByte: this.debugInfo.highByte
-        // }
-
+        }
         
         if (color >= 16 && color%4 == 0) {
             color -= 16
@@ -540,8 +539,10 @@ static MirrorLookup:any = [
      * Rendering is happening every visible cycle, so we actually output 8 pixels for each iteration of this combined 4 fetches loop
      */
     storeTileData() {
-        let data = 0;
         const a = this.attributeTableByte & 0xFF;
+
+        for (let i = 0; i < 8; i++)
+            this.readyToRenderTileData[i] = this.storedTileData[i];
 
         for (let i = 0; i < 8; i++) {
             const bit0 = (this.tileBytes[0] & 0x80 ) >>> 7;
@@ -549,11 +550,9 @@ static MirrorLookup:any = [
             this.tileBytes[0] <<= 1;
             this.tileBytes[1] <<= 1;
         
-            data <<= 4;
-            data |= (a << 2) | (bit1 << 1) | bit0;
+            const colorIdx = (a << 2) | (bit1 << 1) | bit0;            
+            this.storedTileData[i] = colorIdx;
         }
-
-        this.tileData[0] = data;
     }
         
     /**
