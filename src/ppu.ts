@@ -149,6 +149,7 @@ export class PPU {
         this.cpu = this.nes.getCPU();
         this.memory = this.nes.getMemory();
 
+        // contains 8 pixels for 8 sprites on the current scanline
         this.spritePatterns = [new Uint8Array(8), new Uint8Array(8), new Uint8Array(8), new Uint8Array(8), new Uint8Array(8), new Uint8Array(8), new Uint8Array(8), new Uint8Array(8)];
         this.spritePositions = new Uint8Array(8);
         this.spritePriorities = new Uint8Array(8);
@@ -436,15 +437,7 @@ export class PPU {
         this.pixels[pixelIdx + 2] = colb;
         this.pixels[pixelIdx + 3] = 0xFF;            
     }
-
-    copyY() {
-        this.v[0] = (this.v[0] & 0x841F) | (this.t[0] & 0x7BE0)
-    }
-
-    copyX() {
-        this.v[0] = (this.v[0] & 0xFBE0) | (this.t[0] & 0x041F)
-    }
-    
+        
     // X is increased unless it's the final coarseX value and it needs wrap around
     // and to ensure proper scrolling - 2 nametable display at once, we need to switch
     // the nametables horizontally by flipping the 10th bit(0 based)
@@ -715,7 +708,8 @@ export class PPU {
                 }
 
                 if (preLine && this.cycle >= 280 && this.cycle <= 304) {
-                    this.copyY();
+                    // copyY
+                    this.v[0] = (this.v[0] & 0x841F) | (this.t[0] & 0x7BE0)
                 }
                 
                 if (renderLine) {
@@ -726,7 +720,8 @@ export class PPU {
                         this.incrementY();
                     }
                     if (this.cycle == 257) {
-                        this.copyX();
+                        // copyX
+                        this.v[0] = (this.v[0] & 0xFBE0) | (this.t[0] & 0x041F)
                     }
                 }
             }
