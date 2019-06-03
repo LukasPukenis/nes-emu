@@ -167,7 +167,7 @@ export class PPU {
         this.setMirror(0x3000, 0x2000, 0xf00);
         this.setMirror(0x4000, 0x0000, 0x4000);
 
-        if (this.nes.getROM().getMirror() == 0) {
+        if (this.nes.getROM().getMirror() == 1) {
             this.setMirror(0x2800, 0x2000, 0x400);
             this.setMirror(0x2c00, 0x2400, 0x400);
         } else {
@@ -175,26 +175,6 @@ export class PPU {
             this.setMirror(0x2800, 0x2400, 0x400);
         }
     }
-    
-
-static MirrorLookup:any = [
-	[0, 0, 1, 1],
-	[0, 1, 0, 1],
-	[0, 0, 0, 0],
-	[1, 1, 1, 1],
-	[0, 1, 2, 3]
-]
-
- MirrorAddress(mode: number, address: number): number {
-	address = (address - 0x2000) % 0x1000;
-	let table = Math.trunc(address / 0x0400);
-    let offset = address % 0x0400;
-	const finalAddr = 0x2000 + PPU.MirrorLookup[mode][table]*0x0400 + offset;
-    // console.log(finalAddr);
-    // if (isNaN(finalAddr)) debugger
-    return finalAddr;
-}
-
 
     // mirror table literally holds the address it's mirrored to
     setMirror(from: number, to: number, size: number) {
@@ -638,11 +618,9 @@ static MirrorLookup:any = [
             
             this.lastCycle = this.cycle;
             
-            // this.tick();
             if (this.nmiDelay > 0) {
                 this.nmiDelay--;
                 if (this.nmiDelay == 0 && this.v_blank && this.generateNMI) {
-                    // console.log('nmi');
                     this.cpu.triggerNMI();
                 }
             }
@@ -671,9 +649,7 @@ static MirrorLookup:any = [
                 }
             }
 
-            const cycleDiff = Math.abs(this.lastCycle - this.cycle);
-            // console.assert(cycleDiff == 1|| cycleDiff == 340 || cycleDiff == 339, cycleDiff.toString());
-            
+            const cycleDiff = Math.abs(this.lastCycle - this.cycle);            
             let render = this.maskShowBG == 1 || this.maskShowSprites == 1;
             let preLine = this.scanLine == 261;
             let visibleLine = this.scanLine < 240;
@@ -838,8 +814,7 @@ static MirrorLookup:any = [
             let x = this.mapper.read(addr, poke) & 0xFF; 
             return x;
         } else if (addr < 0x3F00) {
-            let mode = this.nes.getROM().getMirror();
-            return this.vram[ this.MirrorAddress(mode, addr) % 2048] & 0xFF; // todo: mirror  , probably cia bugas del lode runnerio crasho, nes mirrorinimas neveikia, tai cia vejus nuskaito ir undefined gaunas      
+            return this.vram[this.mirrorTable[addr] % 2048];
         } else if (addr < 0x4000) {
             return this.readPalette(addr % 32);
         } else {
@@ -852,8 +827,7 @@ static MirrorLookup:any = [
         if (addr < 0x2000) {
             throw new Error("Cant write to mapper! yet");
         } else if (addr < 0x3F00) {
-            let mode = this.nes.getROM().getMirror();
-            this.vram[ this.MirrorAddress(mode, addr) % 2048] = value; // todo: mirroring
+            this.vram[this.mirrorTable[addr] % 2048] = value;            
         } else if (addr < 0x4000) {
             this.writePalette(addr % 32, value);
         }
