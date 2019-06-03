@@ -68,10 +68,8 @@ export class PPU {
     flagZeroHit: number = 0;
     
     // todo: would be great to wrap these around UintArray8 or maybe provide getter/setter to guard against byte/word bounds
-    spriteCount: number = 0;
-    tilePixelIndex: number = 0;
-    readyToRenderTileData: Uint8Array = new Uint8Array(8);    
-    storedTileData: Uint8Array = new Uint8Array(8);
+    spriteCount: number = 0;    
+    tilePixelData: Uint8Array = new Uint8Array(16);
     tileIndex: number = 16;
     tileBytes: Uint8Array = new Uint8Array(2);
     flagBGTable: number = 0;
@@ -304,6 +302,7 @@ static MirrorLookup:any = [
 
         let oamData = this.oamData;
         let count = 0;
+
         for (let i = 0; i < 64; i++) {
             let y = oamData[i*4+0];
             let a = oamData[i*4+2];
@@ -334,20 +333,13 @@ static MirrorLookup:any = [
         const x = this.cycle - 1;
         const y = this.scanLine;
 
-        // background pixel rendering is affected by fine X scroll, Using bit shifting is more natural technique
-        // however I feel using arrays is more debugable and easier to understand even though not as natural as NESDEV PPU WIKI describes the flow
-        // this is a poor imitation of 2 shift registers where one is fetched with new pixels to render later
-        // while the other one is used to render said pixels, each time pixel is rendered they are shifted
+        // background pixel rendering is affected by fine X scroll, using bit shifting is more natural technique
+        // however I feel using an array is more debugable and easier to understand. PPU has access to 8 pixels at a time from the lowest 8bits.
+        // now one pixel consists of 2 bits and 2 attribute bits so pixel data is the first 2 bits mentioned. 2 shift register 8bit each is for each
+        // bit/plane. In here the pixel data is already combined so no need to care for that, just access using fineX. Inside the fetch loop the pixel data is constantly being shifted
         let background = 0;
-        if (this.maskShowBG == 1) {            
-            let idx = this.tilePixelIndex + this.fineX;            
-            let data;
-            if (idx < 8) {
-                data = this.readyToRenderTileData[idx];
-            } else {
-                data = this.storedTileData[idx - 8];
-            }
-
+        if (this.maskShowBG == 1) {
+            const data = this.tilePixelData[this.fineX];
             background = data & 0xF;
         }
 
@@ -358,12 +350,13 @@ static MirrorLookup:any = [
         // we need to calculate offset for the pixel in sprite
         if (this.maskShowSprites == 1) {
             for (let i = 0; i < this.spriteCount; i++) {
-                let offset = (this.cycle - 1) - this.spritePositions[i];
-                // sprite is not in this 8pixels region
+                let offset = x - this.spritePositions[i];
+                // sprite is not in this 8pixels region so no sprite pixel in here
                 if (offset < 0 || offset > 7) {
                     continue;
                 }
     
+                // otherwise sprite pixel needs to be rendered here, we can just deduce the needed pixel by using current X and sprite's X
                 offset = 7 - offset;
                 const a = (offset*4) & 0xFF;
                 let b = (this.spritePatterns[i] >>> a);
@@ -540,18 +533,15 @@ static MirrorLookup:any = [
      */
     storeTileData() {
         const a = this.attributeTableByte & 0xFF;
-
-        for (let i = 0; i < 8; i++)
-            this.readyToRenderTileData[i] = this.storedTileData[i];
-
+        
         for (let i = 0; i < 8; i++) {
             const bit0 = (this.tileBytes[0] & 0x80 ) >>> 7;
             const bit1 = (this.tileBytes[1] & 0x80 ) >>> 7;
             this.tileBytes[0] <<= 1;
             this.tileBytes[1] <<= 1;
         
-            const colorIdx = (a << 2) | (bit1 << 1) | bit0;            
-            this.storedTileData[i] = colorIdx;
+            const colorIdx = (a << 2) | (bit1 << 1) | bit0;
+            this.tilePixelData[8+i] = colorIdx;
         }
     }
         
@@ -697,11 +687,11 @@ static MirrorLookup:any = [
                 if (visibleLine && visibleCycle) {
                     this.renderPixel();
                 }
+                
+                if (renderLine && fetchCycle) {                    
+                    for (let i = 0; i < 15; i++)
+                        this.tilePixelData[i] = this.tilePixelData[i+1];                    
 
-                if (renderLine && fetchCycle) {
-                    this.tileData[1] = (this.tileData[1] << 4) | ((this.tileData[0] >>> 28) & 0xF);
-                    this.tileData[0] = this.tileData[0] << 4;
-                    
                     switch (this.cycle % 8) {
                         case 1:
                             this.fetchNameTableByte(); break;
