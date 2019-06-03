@@ -14,14 +14,14 @@ const DEBUG_SPRITES = false; // draws sprites in a single color(whole 8x8 or 8x1
 // todo: this is wrong, PPU reads from the cartridge and only from pallettes(32), nametables(2048) and OAM(256) all of which are
 const VRAM_SIZE = 0x8000;
 
-const PALETTE = [0x666666, 0x002A88, 0x1412A7, 0x3B00A4, 0x5C007E, 0x6E0040, 0x6C0600, 0x561D00,
-    0x333500, 0x0B4800, 0x005200, 0x004F08, 0x00404D, 0x000000, 0x000000, 0x000000,
-    0xADADAD, 0x155FD9, 0x4240FF, 0x7527FE, 0xA01ACC, 0xB71E7B, 0xB53120, 0x994E00,
-    0x6B6D00, 0x388700, 0x0C9300, 0x008F32, 0x007C8D, 0x000000, 0x000000, 0x000000,
-    0xFFFEFF, 0x64B0FF, 0x9290FF, 0xC676FF, 0xF36AFF, 0xFE6ECC, 0xFE8170, 0xEA9E22,
-    0xBCBE00, 0x88D800, 0x5CE430, 0x45E082, 0x48CDDE, 0x4F4F4F, 0x000000, 0x000000,
-    0xFFFEFF, 0xC0DFFF, 0xD3D2FF, 0xE8C8FF, 0xFBC2FF, 0xFEC4EA, 0xFECCC5, 0xF7D8A5,
-    0xE4E594, 0xCFEF96, 0xBDF4AB, 0xB3F3CC, 0xB5EBF2, 0xB8B8B8, 0x000000, 0x000000];
+const PALETTE = [   0x666666, 0x002A88, 0x1412A7, 0x3B00A4, 0x5C007E, 0x6E0040, 0x6C0600, 0x561D00,
+                    0x333500, 0x0B4800, 0x005200, 0x004F08, 0x00404D, 0x000000, 0x000000, 0x000000,
+                    0xADADAD, 0x155FD9, 0x4240FF, 0x7527FE, 0xA01ACC, 0xB71E7B, 0xB53120, 0x994E00,
+                    0x6B6D00, 0x388700, 0x0C9300, 0x008F32, 0x007C8D, 0x000000, 0x000000, 0x000000,
+                    0xFFFEFF, 0x64B0FF, 0x9290FF, 0xC676FF, 0xF36AFF, 0xFE6ECC, 0xFE8170, 0xEA9E22,
+                    0xBCBE00, 0x88D800, 0x5CE430, 0x45E082, 0x48CDDE, 0x4F4F4F, 0x000000, 0x000000,
+                    0xFFFEFF, 0xC0DFFF, 0xD3D2FF, 0xE8C8FF, 0xFBC2FF, 0xFEC4EA, 0xFECCC5, 0xF7D8A5,
+                    0xE4E594, 0xCFEF96, 0xBDF4AB, 0xB3F3CC, 0xB5EBF2, 0xB8B8B8, 0x000000, 0x000000];
 
 export class PPU {
     debugInfo: any = {
@@ -59,15 +59,14 @@ export class PPU {
     nmiPrevious: boolean = false;
 
     fineX: number = 0;
-    spritePatterns: number[] = [];
-    spritePositions: number[] = [];
-    spritePriorities: number[] = [];
-    spriteIndexes: number[] = [];
+    spritePatterns: Uint8Array[];
+    spritePositions: Uint8Array;
+    spritePriorities: Uint8Array;
+    spriteIndexes: Uint8Array;
 
     flagOverflow: number = 0;
     flagZeroHit: number = 0;
     
-    // todo: would be great to wrap these around UintArray8 or maybe provide getter/setter to guard against byte/word bounds
     spriteCount: number = 0;    
     tilePixelData: Uint8Array = new Uint8Array(16);
     tileIndex: number = 16;
@@ -150,6 +149,11 @@ export class PPU {
         this.cpu = this.nes.getCPU();
         this.memory = this.nes.getMemory();
 
+        this.spritePatterns = [new Uint8Array(8), new Uint8Array(8), new Uint8Array(8), new Uint8Array(8), new Uint8Array(8), new Uint8Array(8), new Uint8Array(8), new Uint8Array(8)];
+        this.spritePositions = new Uint8Array(8);
+        this.spritePriorities = new Uint8Array(8);
+        this.spriteIndexes = new Uint8Array(8);
+        
         this.paletteData = new Uint8Array(32);        
 
         this.oamData = new Uint8Array(256);
@@ -207,53 +211,77 @@ export class PPU {
         this.nmiPrevious = nmi;
     }
     
+    // Addresses $3F10/$3F14/$3F18/$3F1C are mirrors of $3F00/$3F04/$3F08/$3F0C
     readPalette(address: number) {
-        if (address >= 16 && address%4 == 0) {
-            address -= 16
-        }
+        if (address >= 16 && (address % 4 == 0))
+            address -= 16;
 
-        return this.paletteData[address] & 0xFF;
+        return this.paletteData[address];
     }
     
+    // Addresses $3F10/$3F14/$3F18/$3F1C are mirrors of $3F00/$3F04/$3F08/$3F0C
     writePalette(address: number, value: number): void {        
-        if (address >= 16 && address%4 == 0) {
-            address -= 16
-        }
+        if (address >= 16 && (address % 4 == 0))
+            address -= 16;
         
-        this.paletteData[address] = value & 0xFF;
+        this.paletteData[address] = value;
     }
-            
-    fetchSpritePattern(i: number, row: number): number {
-        let tile = this.oamData[i*4+1];
-        const attributes = this.oamData[i*4+2];
+    
+    // extract one line/8 pixels of a sprite at a given row
+    extractSpriteLine(spriteIdx: number, row: number): Uint8Array {
+        let tile = this.oamData[spriteIdx*4+1];
+        const attributes = this.oamData[spriteIdx*4+2];
+
         let address = 0;
 
         if (this.controlSpriteSize == 0) {
-            if ((attributes & 0x80) == 0x80) {
+            // sprite may be flipped vertically, thus invert the row
+            if ((attributes & 0x80) == 0x80)
                 row = 7 - row;
-            }
-            const table = this.controlSpriteTable;
-            address = 0x1000*(table & 0xFFFF) + (tile & 0xFFFF)*16 + (row & 0xFFFF);
+            
+            const base = this.controlSpriteTable * 0x1000;
+            address = base + tile*16 + row;
         } else {
-            if ((attributes & 0x80) == 0x80) {
+            // sprite may be flipped vertically and it's 8x16 sprite
+            // For 8x16 sprites, the PPU ignores the pattern table selection and selects a pattern table from bit 0 from tile index
+            // bit0
+            if ((attributes & 0x80) == 0x80)
                 row = 15 - row;
-            }
+                
+            // grab the 0th bit and force it to zero
             const table = tile & 1;
             tile &= 0xFE;
+
+            // In 8x16 mode, vertical flip flips each of the subtiles and also exchanges their position;
+            // as in - the odd-numbered tile of a vertically flipped sprite is drawn on top
+            // below is the crude diagram of what's happening
+            // +-+        +-+
+            // |v|        |p|
+            // +-+   =>   +-+
+            // +-+   =>   +-+
+            // |b|        |^|
+            // +-+        +-+
+
+            // In case our row is > 8th scanline we will choose another "plane" and sign the tile 0th bit on
             if (row > 7) {
                 tile++;
                 row -= 8;
-            }
-            address = 0x1000*(table & 0xFFFF) + (tile & 0xFFFF)*16 + (row & 0xFFFF);
+            }            
+
+            const base = 0x1000 * table;
+            address = base + tile*16 + row;
         }
+        
         let a = (attributes & 3) << 2;
         let lowTileByte = this.read(address);
         let highTileByte = this.read(address + 8);
-        let data: Uint32Array = new Uint32Array(1);
+        let pixels = new Uint8Array(8);
 
+        // pack the 8 pixels, extracting the pattern from 2 planes
         for (let i = 0; i < 8; i++) {
             var p1, p2;
 
+            // sprite may be flipped horizontally
             if ((attributes & 0x40) == 0x40) {
                 p1 = (lowTileByte & 1) << 0;
                 p2 = (highTileByte & 1) << 1;
@@ -266,14 +294,14 @@ export class PPU {
                 highTileByte <<= 1;
             }
 
-            data[0] <<= 4;
-            data[0] |= (a | p1 | p2) & 0xFFFFFFFF;
+            pixels[7-i] = (a | p1 | p2);
         }
-        return data[0]
+        return pixels;
     }
     
-    evaluateSprites() {
-        let h = 0;
+    // prepare up to 8 sprites for rendering on this scanline
+    prepareSprites() {
+        let h;
         if (this.controlSpriteSize == 0) {
             h = 8;
         } else {
@@ -287,26 +315,26 @@ export class PPU {
             let y = oamData[i*4+0];
             let a = oamData[i*4+2];
             let x = oamData[i*4+3];
+            // calculate if the sprite in question is being displayed in here by calculating it's height different from current Y position
             let row = this.scanLine - y;
             if (row < 0 || row >= h) {
                 continue;
             }
 
+            // there are only 8 sprites visible at most
             if (count < 8) {
-                this.spritePatterns[count] = 0xFFFFFFFF & this.fetchSpritePattern(i, row);
+                this.spritePatterns[count] = this.extractSpriteLine(i, row);
                 this.spritePositions[count] = x;
                 this.spritePriorities[count] = (a >>> 5) & 1;
-                this.spriteIndexes[count] = i & 0xFF;
+                this.spriteIndexes[count] = i;
             }
             count++
         }
 
-        if (count > 8) {
-            count = 8;
+        if (count > 8)
             this.flagOverflow = 1;
-        }
 
-        this.spriteCount = count;
+        this.spriteCount = Math.min(count, 8);
     }
 
     renderPixel() {
@@ -338,8 +366,7 @@ export class PPU {
     
                 // otherwise sprite pixel needs to be rendered here, we can just deduce the needed pixel by using current X and sprite's X
                 offset = 7 - offset;
-                const a = (offset*4) & 0xFF;
-                let b = (this.spritePatterns[i] >>> a);
+                let b = this.spritePatterns[i][offset];
 
                 if (DEBUG_SPRITES)
                     b = i+1;
@@ -356,17 +383,21 @@ export class PPU {
             }
         }
 
-        if (x < 8 && this.maskShowLeftBG == 0) {
-            background = 0;
+        if (x < 8) {
+            if (this.maskShowLeftBG == 0)
+                background = 0;
+            
+            if (this.maskShowLeftSprites == 0)
+                sprite = 0;
         }
         
-        if (x < 8 && this.maskShowLeftSprites == 0) {
-            sprite = 0;
-        }
-
         const b = background % 4 != 0;
         const s = sprite % 4 != 0;
         var color = 0;
+
+        // this is priority "sorting" of ppu. It only renders BG pixel only if BG priority is higher
+        // The palette for the background runs from VRAM $3F00 to $3F0F; the palette for the sprites runs from $3F10 to $3F1F. Each color takes up one byte.
+        // so selecting sprite color needs to have appropriate 
 
         if (!b && !s) {
             color = 0;
@@ -375,10 +406,11 @@ export class PPU {
         } else if (b && !s) {
             color = background;
         } else {
-            // both background and sprite pixels are here a collision so to speak
+            // Sprite0 handler - both background and sprite pixels are here a collision so to speak
             if (this.spriteIndexes[idx] == 0 && x < 255) {
                 this.flagZeroHit = 1;
             }
+
             if (this.spritePriorities[idx] == 0) {
                 color = sprite | 0x10;
             } else {
@@ -386,13 +418,13 @@ export class PPU {
             }
         }
         
-        if (color >= 16 && color%4 == 0) {
+        // handle palette mirroring
+        if (color >= 16 && (color % 4) == 0)
             color -= 16
-        }
         
-        const fromPalette = this.paletteData[color] % 64;
+        const paletteIndex = this.paletteData[color];
 
-        let c = PALETTE[fromPalette];
+        let c = PALETTE[paletteIndex];
 
         const colr = (c >>> 16) & 0xFF;
         const colg = (c >>> 8) & 0xFF;
@@ -702,11 +734,10 @@ export class PPU {
             // sprite logic
             if (render) {
                 if (this.cycle == 257) {
-                    if (visibleLine) {
-                        this.evaluateSprites()
-                    } else {
-                        this.spriteCount = 0
-                    }
+                    // this is a crude approximation, nesdev wiki states a huge list of timings and actions but perfect results can be achieved by doing everything in one batch
+                    this.spriteCount = 0
+                    if (visibleLine)
+                        this.prepareSprites();
                 }
             }
             
