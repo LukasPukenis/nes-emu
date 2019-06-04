@@ -437,19 +437,7 @@ export class PPU {
         this.pixels[pixelIdx + 2] = colb;
         this.pixels[pixelIdx + 3] = 0xFF;            
     }
-        
-    // X is increased unless it's the final coarseX value and it needs wrap around
-    // and to ensure proper scrolling - 2 nametable display at once, we need to switch
-    // the nametables horizontally by flipping the 10th bit(0 based)
-    incrementX() {        
-        if ((this.v[0] & 0x001F) == 31) {
-            this.v[0] &= 0xFFE0;
-            this.v[0] ^= 0x0400;
-        } else {
-            this.v[0]++;            
-        }
-    }
-    
+            
     // we need to increment the Y in order to ensure the proper scrolling - displaying of 2 nametables at once
     // once we reach the end we need to wraparound by flipping the 11th bit
     incrementY() {        
@@ -714,11 +702,21 @@ export class PPU {
                 
                 if (renderLine) {
                     if (fetchCycle && (this.cycle % 8 == 0)) {
-                        this.incrementX();
+                        // X is increased unless it's the final coarseX value and it needs wrap around
+                        // and to ensure proper scrolling - 2 nametable display at once, we need to switch
+                        // the nametables horizontally by flipping the 10th bit(0 based)    
+                        if ((this.v[0] & 0x001F) == 31) {
+                            this.v[0] &= 0xFFE0;
+                            this.v[0] ^= 0x0400;
+                        } else {
+                            this.v[0]++;            
+                        }                    
                     }
+
                     if (this.cycle == 256) {
                         this.incrementY();
                     }
+
                     if (this.cycle == 257) {
                         // copyX
                         this.v[0] = (this.v[0] & 0xFBE0) | (this.t[0] & 0x041F)
