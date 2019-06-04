@@ -5,6 +5,8 @@ var fs = require('mz/fs')
 const PRG_ROM_COUNT = 4;
 const CHR_ROM_COUNT = 5;
 const FLAG6 = 6;
+const FLAG7 = 7;
+
 
 enum MIRROR_TYPES {
     Horizontal,
@@ -16,6 +18,7 @@ class Header {
     public prgRomCnt: number = 0;
     public chrRomCnt: number = 0;
     public mirror: number = 0;
+    public mapper: number = null;
 }
 
 export class ROM {
@@ -65,8 +68,10 @@ export class ROM {
         this.header.chrRomCnt = this.data[CHR_ROM_COUNT];
         this.header.mirror = this.data[FLAG6] & 1;
 
-        // this.header.mirror = 0;
-
+        let mapperLO = this.data[FLAG6] >> 4;
+        let mapperHI = this.data[FLAG7] >> 4;
+        this.header.mapper = mapperHI << 4 | mapperLO;
+        console.log("Mapper:", this.header.mapper.toString);
         console.log("Mirror bit", this.header.mirror);
         
         for (let i = 0; i < this.header.prgRomCnt; i++)            
@@ -87,6 +92,10 @@ export class ROM {
         console.log(`CHR ROMS: #${this.header.chrRomCnt}`);
         
         return true;
+    }
+
+    getMapper(): number {
+        return this.header.mapper;
     }
 
     getMirror(): number {

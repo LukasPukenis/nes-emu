@@ -63,7 +63,13 @@ export class NES {
 
         await this.rom.load(path)        
 
-        this.mapper = new Mapper0(this.rom);
+        const mapper = this.rom.getMapper();
+        if (mapper == 0) {
+            this.mapper = new Mapper0(this.rom);
+        } else {
+            throw new Error(`Mapper ${mapper} NOT SUPPORTED`);
+        }
+
         this.memory = new Memory(this);        
         this.cpu = new CPU(this);
         this.ppu = new PPU(this, this.canvas, this.debugCanvas);
