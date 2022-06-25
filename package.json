@@ -30,7 +30,7 @@
     "isomorphic-fetch": "^2.2.1",
     "jest": "^23.6.0",
     "mz": "^2.7.0",
-    "node-fetch": "^2.3.0",
+    "node-fetch": "^2.6.7",
     "npx": "^10.2.0",
     "sqlite": "^3.0.0",
     "whatwg-fetch": "^3.0.0"
